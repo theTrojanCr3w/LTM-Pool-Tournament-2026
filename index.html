@@ -106,13 +106,14 @@ import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebase
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD-3BzT-YnkegIJOKmAd38yxrajr8jct8",
+  apiKey: "AIzaSyD-3BzT-TYnkegIJOKmAd38yxrajr8jct8",
   authDomain: "ltm-pool-tournament.firebaseapp.com",
   databaseURL: "https://ltm-pool-tournament-default-rtdb.firebaseio.com",
   projectId: "ltm-pool-tournament",
   storageBucket: "ltm-pool-tournament.firebasestorage.app",
   messagingSenderId: "1086941609764",
-  appId: "1:1086941609764:web:051594093405f3ee83fdb1"
+  appId: "1:1086941609764:web:051594093405f3ee83fdb1",
+  measurementId: "G-PT3NL3RSG2"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -269,4 +270,5 @@ updateTable(row.closest("table"));
 
 </body>
 </html>
+
 

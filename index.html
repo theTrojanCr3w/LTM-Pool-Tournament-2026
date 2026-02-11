@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pool Tournament</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f9;
+            padding: 20px;
+        }
+        h2 {
+            margin-top: 40px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 30px;
+            background: white;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background: #2c3e50;
+            color: white;
+        }
+        input {
+            width: 50px;
+            text-align: center;
+        }
+        .qualified {
+            background-color: #d4edda !important;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🏆 Pool Tournament</h1>
+
+<div id="groups"></div>
+
+<script>
+
+const groups = {
+    "Group A": ["Pratyush","Vamshi Krishna","Bhalchandra","Bhavik","Protim"],
+    "Group B": ["Chirag","Karan","Tameem","Arif","Syam"],
+    "Group C": ["Ganesh","Dinesh","Yash","Rachit","Ankit"],
+    "Group D": ["Somyadeep","Shrey","Gaurav","Abdul","Vikas"]
+};
+
+const container = document.getElementById("groups");
+
+for (let groupName in groups) {
+
+    let html = `<h2>${groupName}</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Player</th>
+                <th>P</th>
+                <th>W</th>
+                <th>L</th>
+                <th>Points</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    groups[groupName].forEach((player, index) => {
+        html += `
+            <tr>
+                <td>${player}</td>
+                <td class="played">0</td>
+                <td><input type="number" min="0" max="4" value="0" class="wins"></td>
+                <td><input type="number" min="0" max="4" value="0" class="loss"></td>
+                <td class="points">0</td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>`;
+    container.innerHTML += html;
+}
+
+function updateTable(table) {
+
+    let rows = Array.from(table.querySelectorAll("tbody tr"));
+
+    rows.forEach(row => {
+        let w = parseInt(row.querySelector(".wins").value) || 0;
+        let l = parseInt(row.querySelector(".loss").value) || 0;
+        row.querySelector(".played").innerText = w + l;
+        row.querySelector(".points").innerText = w * 2;
+        row.classList.remove("qualified");
+    });
+
+    rows.sort((a,b) =>
+        parseInt(b.querySelector(".points").innerText) -
+        parseInt(a.querySelector(".points").innerText)
+    );
+
+    rows.forEach(row => table.querySelector("tbody").appendChild(row));
+
+    rows.slice(0,2).forEach(row => row.classList.add("qualified"));
+}
+
+document.addEventListener("input", function(e) {
+    if (e.target.classList.contains("wins") || e.target.classList.contains("loss")) {
+        let table = e.target.closest("table");
+        updateTable(table);
+    }
+});
+
+</script>
+
+</body>
+</html>

@@ -5,48 +5,53 @@
 <title>LTM Pool Tournament 2026</title>
 
 <style>
-
 body {
     margin:0;
     font-family: 'Segoe UI', sans-serif;
     background: radial-gradient(circle at center, #0f5132 0%, #063d23 60%, #021d10 100%);
-    background-size: cover;
-    color: white;
+    color:white;
 }
 
 .overlay {
-    min-height: 100vh;
-    padding: 40px;
-    background: rgba(0, 0, 0, 0.3);
+    min-height:100vh;
+    padding:40px;
+    background: rgba(0,0,0,0.3);
 }
 
 h1 {
     text-align:center;
-    font-size:40px;
-    margin-bottom:40px;
+    font-size:36px;
+    margin-bottom:30px;
     color:#00ff99;
-    letter-spacing:2px;
 }
 
-h2 {
-    margin-top:50px;
-    color:#00ffcc;
+button {
+    padding:8px 14px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+#loginBtn { background:#00ff99; }
+#logoutBtn { background:#ff4d4d; display:none; }
+
+.admin-badge {
+    color:#00ff99;
+    font-weight:bold;
+    margin-left:10px;
 }
 
 table {
     width:100%;
     border-collapse: collapse;
-    margin-top:15px;
+    margin-top:20px;
     margin-bottom:40px;
-    backdrop-filter: blur(10px);
     background: rgba(255,255,255,0.08);
-    border-radius:10px;
-    overflow:hidden;
 }
 
 th {
     background:#006633;
-    color:white;
     padding:12px;
 }
 
@@ -64,19 +69,31 @@ input {
     text-align:center;
 }
 
+input:disabled {
+    background:#ccc;
+    cursor:not-allowed;
+}
+
 .qualified {
-    background: rgba(0,255,153,0.25) !important;
+    background: rgba(0,255,153,0.25);
     font-weight:bold;
     color:#00ff99;
 }
-
 </style>
 </head>
 
 <body>
 <div class="overlay">
 
-<h1>🎱 LTM POOL TOURNAMENT 2026 🎱</h1>
+<h1>
+🎱 LTM POOL TOURNAMENT 2026
+<span id="adminBadge" class="admin-badge"></span>
+</h1>
+
+<div style="text-align:center;margin-bottom:20px;">
+<button id="loginBtn">Admin Login</button>
+<button id="logoutBtn">Logout</button>
+</div>
 
 <div id="groups"></div>
 
@@ -86,6 +103,7 @@ input {
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD-3BzT-YnkegIJOKmAd38yxrajr8jct8",
@@ -99,6 +117,47 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
+
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const adminBadge = document.getElementById("adminBadge");
+
+let isAdmin = false;
+
+loginBtn.onclick = async () => {
+    const email = prompt("Enter admin email:");
+    const password = prompt("Enter password:");
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+    } catch (err) {
+        alert("Login failed");
+    }
+};
+
+logoutBtn.onclick = () => signOut(auth);
+
+onAuthStateChanged(auth, user => {
+    if (user) {
+        isAdmin = true;
+        adminBadge.innerText = " (ADMIN)";
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+        enableInputs(true);
+    } else {
+        isAdmin = false;
+        adminBadge.innerText = "";
+        loginBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+        enableInputs(false);
+    }
+});
+
+function enableInputs(state) {
+    document.querySelectorAll("input").forEach(i => {
+        i.disabled = !state;
+    });
+}
 
 const groups = {
 "Group A": ["Pratyush","Vamshi Krishna","Bhalchandra","Bhavik","Protim"],
@@ -162,6 +221,9 @@ rows.slice(0,2).forEach(row => row.classList.add("qualified"));
 }
 
 document.addEventListener("input", function(e) {
+
+if (!isAdmin) return;
+
 if (e.target.classList.contains("wins") || e.target.classList.contains("loss")) {
 
 let row = e.target.closest("tr");
@@ -206,6 +268,3 @@ updateTable(row.closest("table"));
 
 </body>
 </html>
-
-
-

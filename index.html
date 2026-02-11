@@ -15,12 +15,20 @@ body {
 .overlay {
     min-height:100vh;
     padding:40px;
-    background: rgba(0,0,0,0.3);
+    background: none;
 }
 table {
     width: 100%;
     min-width: 600px;   /* prevents squeezing */
 }
+tbody tr {
+    background: #0f5132;
+}
+
+tbody tr:nth-child(even) {
+    background: #0c462b;
+}
+
 @media (max-width: 768px) {
     table {
         font-size: 14px;
@@ -85,7 +93,7 @@ table {
     border-collapse: collapse;
     margin-top:20px;
     margin-bottom:40px;
-    background: rgba(255,255,255,0.08);
+    background: #0b3d26;
 }
 
 th {
@@ -308,6 +316,7 @@ updateTable(row.closest("table"));
 
 </body>
 </html>
+
 
 
 

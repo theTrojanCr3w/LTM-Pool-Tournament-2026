@@ -8,55 +8,110 @@
 body{
 margin:0;
 font-family:'Segoe UI',sans-serif;
-background:radial-gradient(circle at center,#0f5132 0%,#063d23 60%,#021d10 100%);
+background:radial-gradient(circle at top,#0f5132 0%,#063d23 60%,#021d10 100%);
 color:white;
 }
+
 .overlay{
 min-height:100vh;
-max-width:1200px;
-margin:0 auto;
+max-width:1300px;
+margin:auto;
 padding:40px 20px;
 }
-h1{text-align:center;color:#00ff99;}
-h2{margin-top:50px;}
+
+h1{
+text-align:center;
+color:#00ff99;
+font-size:34px;
+text-shadow:0 0 15px rgba(0,255,153,0.6);
+}
+
+h2{
+margin-top:60px;
+color:#00ff99;
+border-bottom:2px solid rgba(0,255,153,0.2);
+padding-bottom:8px;
+}
+
 table{
 width:100%;
 border-collapse:collapse;
 margin:20px 0;
-background:#0b3d26;
+background:rgba(0,0,0,0.3);
+border-radius:12px;
+overflow:hidden;
+box-shadow:0 10px 25px rgba(0,0,0,0.5);
 }
-th{background:#006633;padding:10px;}
-td{padding:8px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);}
-tbody tr:nth-child(even){background:#0c462b;}
-.points{font-weight:bold;color:#00ff99;}
-.fixture-box{
-max-height:300px;
-overflow-y:auto;
-background:#062d1c;
+
+th{
+background:linear-gradient(90deg,#006633,#00994d);
+padding:12px;
+text-transform:uppercase;
+font-size:13px;
+}
+
+td{
 padding:10px;
-border-radius:6px;
+text-align:center;
 }
-select{padding:4px;}
+
+tbody tr:hover{
+background:rgba(0,255,153,0.08);
+transform:scale(1.01);
+transition:0.2s;
+}
+
+.first-place{
+background:rgba(255,215,0,0.12);
+box-shadow:0 0 20px gold;
+border-left:4px solid gold;
+}
+
+.second-place{
+background:rgba(192,192,192,0.12);
+box-shadow:0 0 15px silver;
+border-left:4px solid silver;
+}
+
+.third-place{
+background:rgba(205,127,50,0.12);
+box-shadow:0 0 12px #cd7f32;
+border-left:4px solid #cd7f32;
+}
+
+.fixture-box{
+max-height:320px;
+overflow-y:auto;
+background:rgba(0,0,0,0.4);
+padding:10px;
+border-radius:10px;
+}
+
+select{
+padding:6px;
+border-radius:6px;
+background:#062d1c;
+color:white;
+border:1px solid #00ff99;
+}
+
 button{
-padding:6px 12px;
+padding:8px 20px;
 border:none;
-border-radius:6px;
-cursor:pointer;
+border-radius:20px;
 font-weight:bold;
+cursor:pointer;
 }
-#loginBtn{background:#00ff99;}
-#logoutBtn{background:#ff4d4d;display:none;}
-.admin-badge{color:#00ff99;font-weight:bold;}
+
+#loginBtn{background:#00ff99;color:black;}
+#logoutBtn{background:#ff4d4d;color:white;display:none;}
 </style>
 </head>
 
 <body>
 <div class="overlay">
 
-<h1>
-🎱 LTM POOL TOURNAMENT 2026 🎱
-<span id="adminBadge" class="admin-badge"></span>
-</h1>
+<h1>🎱 LTM POOL TOURNAMENT 2026 🎱</h1>
 
 <div style="text-align:center;margin-bottom:20px;">
 <button id="loginBtn">Admin Login</button>
@@ -93,7 +148,6 @@ const provider = new GoogleAuthProvider();
 
 const loginBtn=document.getElementById("loginBtn");
 const logoutBtn=document.getElementById("logoutBtn");
-const adminBadge=document.getElementById("adminBadge");
 
 let isAdmin=false;
 
@@ -103,12 +157,10 @@ logoutBtn.onclick=()=>signOut(auth);
 onAuthStateChanged(auth,user=>{
 if(user){
 isAdmin=true;
-adminBadge.innerText=" (ADMIN)";
 loginBtn.style.display="none";
 logoutBtn.style.display="inline-block";
 }else{
 isAdmin=false;
-adminBadge.innerText="";
 loginBtn.style.display="inline-block";
 logoutBtn.style.display="none";
 }
@@ -121,54 +173,32 @@ const groups={
 "Group D":["Somyadeep","Shrey","Gaurav","Abdul","Vikas"]
 };
 
-const container=document.getElementById("groups");
-
 function generateMatches(players){
-let m=[];
+let arr=[];
 for(let i=0;i<players.length;i++){
 for(let j=i+1;j<players.length;j++){
-m.push(players[i]+"_vs_"+players[j]);
+arr.push(players[i]+"_vs_"+players[j]);
 }
 }
-return m;
+return arr;
 }
 
-function renderGroup(group, players){
-
-let matches=generateMatches(players);
+function renderGroup(group,players){
 
 let html=`<h2>${group}</h2>
 <table>
 <thead>
 <tr>
-<th>Player</th>
-<th>P</th>
-<th>W</th>
-<th>L</th>
-<th>Points</th>
-<th>FD</th>
+<th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th>
 </tr>
 </thead>
-<tbody id="${group}-body">`;
-
-players.forEach(p=>{
-html+=`
-<tr data-group="${group}" data-player="${p}">
-<td>${p}</td>
-<td class="played">0</td>
-<td class="wins">0</td>
-<td class="loss">0</td>
-<td class="points">0</td>
-<td class="fd">0</td>
-</tr>`;
-});
-
-html+=`</tbody></table>`;
+<tbody id="${group}-table"></tbody>
+</table>`;
 
 html+=`<div class="fixture-box"><table>
 <tr><th>Match</th><th>Status</th></tr>`;
 
-matches.forEach(m=>{
+generateMatches(players).forEach(m=>{
 let [p1,p2]=m.split("_vs_");
 html+=`
 <tr>
@@ -185,30 +215,22 @@ html+=`
 
 html+=`</table></div>`;
 
-container.innerHTML+=html;
+document.getElementById("groups").innerHTML+=html;
 
-listenGroup(group, players);
-}
-
-function listenGroup(group, players){
-
-onValue(ref(db,group+"/matches"),snapshot=>{
-
+onValue(ref(db,group+"/matches"),snap=>{
 let data={};
 players.forEach(p=>data[p]={wins:0,loss:0});
 
-if(snapshot.exists()){
-snapshot.forEach(m=>{
+let completed=0;
+
+if(snap.exists()){
+snap.forEach(m=>{
 let val=m.val();
 if(!val.winner) return;
-
+completed++;
 let [p1,p2]=m.key.split("_vs_");
-
 if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
 if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
-
-let select=document.querySelector(`select[data-group="${group}"][data-match="${m.key}"]`);
-if(select) select.value=val.winner;
 });
 }
 
@@ -225,12 +247,17 @@ if(b.points!==a.points) return b.points-a.points;
 return b.fd-a.fd;
 });
 
-let tbody=document.getElementById(group+"-body");
+let tbody=document.getElementById(group+"-table");
 tbody.innerHTML="";
 
-standings.forEach(p=>{
+standings.forEach((p,i)=>{
+let glow="";
+if(i===0) glow="first-place";
+if(i===1) glow="second-place";
+if(i===2) glow="third-place";
+
 tbody.innerHTML+=`
-<tr>
+<tr class="${glow}">
 <td>${p.name}</td>
 <td>${p.wins+p.loss}</td>
 <td>${p.wins}</td>
@@ -240,111 +267,58 @@ tbody.innerHTML+=`
 </tr>`;
 });
 
-checkSuperQualification();
+handleSuperPromotion(group,standings,completed,players.length);
 
 });
 }
 
-document.addEventListener("change",e=>{
-if(!isAdmin) return;
-if(!e.target.dataset.group) return;
-
-update(ref(db,e.target.dataset.group+"/matches/"+e.target.dataset.match),{
-winner:e.target.value
-});
-});
-
-Object.keys(groups).forEach(g=>renderGroup(g,groups[g]));
-
 let superACPlayers=[];
 let superBDPlayers=[];
 
-function checkSuperQualification(){
+function handleSuperPromotion(group,standings,completed,count){
 
-superACPlayers=[];
-superBDPlayers=[];
+let total=(count*(count-1))/2;
 
-["Group A","Group C"].forEach(g=>{
-collectTopTwo(g,superACPlayers);
-});
+if(completed!==total) return;
 
-["Group B","Group D"].forEach(g=>{
-collectTopTwo(g,superBDPlayers);
-});
+let top2=standings.slice(0,2).map(p=>p.name);
+
+if(group==="Group A"){superACPlayers[0]=top2[0];superACPlayers[1]=top2[1];}
+if(group==="Group C"){superACPlayers[2]=top2[0];superACPlayers[3]=top2[1];}
+if(group==="Group B"){superBDPlayers[0]=top2[0];superBDPlayers[1]=top2[1];}
+if(group==="Group D"){superBDPlayers[2]=top2[0];superBDPlayers[3]=top2[1];}
 
 renderSuper("Super AC",superACPlayers,"superAC");
 renderSuper("Super BD",superBDPlayers,"superBD");
 }
 
-function collectTopTwo(group,arr){
+function renderSuper(name,players,containerId){
 
-let tbody=document.getElementById(group+"-body");
-if(!tbody || tbody.children.length<5) return;
+if(players.length!==4) return;
 
-let totalMatches=generateMatches(groups[group]).length;
-let completed=0;
-
-let selects=document.querySelectorAll(`select[data-group="${group}"]`);
-selects.forEach(s=>{
-if(s.value) completed++;
-});
-
-if(completed!==totalMatches) return;
-
-arr.push(tbody.children[0].children[0].innerText);
-arr.push(tbody.children[1].children[0].innerText);
-}
-
-function renderSuper(stage,players,containerId){
-
-if(players.length!==4){
-document.getElementById(containerId).innerHTML="";
-return;
-}
-
-let matches=generateMatches(players);
-
-let html=`<h2>${stage}</h2>
+let html=`<h2>${name}</h2>
 <table>
 <thead>
 <tr>
-<th>Player</th>
-<th>P</th>
-<th>W</th>
-<th>L</th>
-<th>Points</th>
-<th>FD</th>
+<th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th>
 </tr>
 </thead>
-<tbody id="${stage}-body">`;
-
-players.forEach(p=>{
-html+=`
-<tr>
-<td>${p}</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-<td>0</td>
-</tr>`;
-});
-
-html+=`</tbody></table>`;
+<tbody id="${name}-table"></tbody>
+</table>`;
 
 html+=`<div class="fixture-box"><table>
 <tr><th>Match</th><th>Status</th></tr>`;
 
-matches.forEach(m=>{
+generateMatches(players).forEach(m=>{
 let [p1,p2]=m.split("_vs_");
 html+=`
 <tr>
 <td>${p1} vs ${p2}</td>
 <td>
-<select>
-<option>Not Played</option>
-<option>${p1}</option>
-<option>${p2}</option>
+<select data-super="${name}" data-match="${m}">
+<option value="">Not Played</option>
+<option value="${p1}">${p1}</option>
+<option value="${p2}">${p2}</option>
 </select>
 </td>
 </tr>`;
@@ -354,6 +328,18 @@ html+=`</table></div>`;
 
 document.getElementById(containerId).innerHTML=html;
 }
+
+Object.keys(groups).forEach(g=>renderGroup(g,groups[g]));
+
+document.addEventListener("change",e=>{
+if(!isAdmin) return;
+
+if(e.target.dataset.group){
+update(ref(db,e.target.dataset.group+"/matches/"+e.target.dataset.match),{
+winner:e.target.value
+});
+}
+});
 
 </script>
 </body>

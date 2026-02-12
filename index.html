@@ -19,21 +19,16 @@ padding:40px 20px;
 }
 h1{text-align:center;color:#00ff99;}
 h2{margin-top:50px;}
-
 table{
 width:100%;
 border-collapse:collapse;
 margin:20px 0;
 background:#0b3d26;
 }
-
 th{background:#006633;padding:10px;}
 td{padding:8px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);}
 tbody tr:nth-child(even){background:#0c462b;}
-
 .points{font-weight:bold;color:#00ff99;}
-.fd{font-weight:bold;color:#00ffcc;}
-
 .fixture-box{
 max-height:300px;
 overflow-y:auto;
@@ -41,9 +36,7 @@ background:#062d1c;
 padding:10px;
 border-radius:6px;
 }
-
 select{padding:4px;}
-
 button{
 padding:6px 12px;
 border:none;
@@ -51,7 +44,6 @@ border-radius:6px;
 cursor:pointer;
 font-weight:bold;
 }
-
 #loginBtn{background:#00ff99;}
 #logoutBtn{background:#ff4d4d;display:none;}
 .admin-badge{color:#00ff99;font-weight:bold;}
@@ -83,7 +75,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-/* 🔥 PUT YOUR REAL CONFIG HERE */
 const firebaseConfig = {
   apiKey: "AIzaSyD-3BzT-TYnkegIJOKmAd38yxrajr8jct8",
   authDomain: "ltm-pool-tournament.firebaseapp.com",
@@ -123,7 +114,6 @@ logoutBtn.style.display="none";
 }
 });
 
-/* GROUP DATA */
 const groups={
 "Group A":["Pratyush","Vamshi Krishna","Bhalchandra","Bhavik","Protim"],
 "Group B":["Chirag","Karan","Tameem","Arif","Syam"],
@@ -131,35 +121,54 @@ const groups={
 "Group D":["Somyadeep","Shrey","Gaurav","Abdul","Vikas"]
 };
 
-function generateMatches(players){
-let arr=[];
-for(let i=0;i<players.length;i++){
-for(let j=i+1;j<players.length;j++){
-arr.push(players[i]+"_vs_"+players[j]);
-}
-}
-return arr;
-}
-
-/* BUILD GROUP STAGE */
 const container=document.getElementById("groups");
 
-for(let group in groups){
+function generateMatches(players){
+let m=[];
+for(let i=0;i<players.length;i++){
+for(let j=i+1;j<players.length;j++){
+m.push(players[i]+"_vs_"+players[j]);
+}
+}
+return m;
+}
 
-let players=groups[group];
+function renderGroup(group, players){
+
+let matches=generateMatches(players);
 
 let html=`<h2>${group}</h2>
 <table>
 <thead>
 <tr>
-<th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th>
+<th>Player</th>
+<th>P</th>
+<th>W</th>
+<th>L</th>
+<th>Points</th>
+<th>FD</th>
 </tr>
-</thead><tbody id="${group}-body"></tbody></table>`;
+</thead>
+<tbody id="${group}-body">`;
+
+players.forEach(p=>{
+html+=`
+<tr data-group="${group}" data-player="${p}">
+<td>${p}</td>
+<td class="played">0</td>
+<td class="wins">0</td>
+<td class="loss">0</td>
+<td class="points">0</td>
+<td class="fd">0</td>
+</tr>`;
+});
+
+html+=`</tbody></table>`;
 
 html+=`<div class="fixture-box"><table>
 <tr><th>Match</th><th>Status</th></tr>`;
 
-generateMatches(players).forEach(m=>{
+matches.forEach(m=>{
 let [p1,p2]=m.split("_vs_");
 html+=`
 <tr>
@@ -177,58 +186,33 @@ html+=`
 html+=`</table></div>`;
 
 container.innerHTML+=html;
+
+listenGroup(group, players);
 }
 
-/* SAVE MATCH */
-document.addEventListener("change",e=>{
-if(!isAdmin) return;
-
-if(e.target.dataset.group){
-update(ref(db,e.target.dataset.group+"/matches/"+e.target.dataset.match),{
-winner:e.target.value
-});
-}
-
-if(e.target.dataset.super){
-update(ref(db,"Super/"+e.target.dataset.super+"/matches/"+e.target.dataset.match),{
-winner:e.target.value
-});
-}
-});
-
-/* CALCULATE GROUP + PROMOTE */
-let superAC=[];
-let superBD=[];
-
-for(let group in groups){
+function listenGroup(group, players){
 
 onValue(ref(db,group+"/matches"),snapshot=>{
 
 let data={};
-groups[group].forEach(p=>data[p]={wins:0,loss:0});
-let completed=0;
+players.forEach(p=>data[p]={wins:0,loss:0});
 
 if(snapshot.exists()){
 snapshot.forEach(m=>{
-let winner=m.val().winner||"";
-let matchId=m.key;
+let val=m.val();
+if(!val.winner) return;
 
-let select=document.querySelector(
-`select[data-group="${group}"][data-match="${matchId}"]`
-);
-if(select) select.value=winner;
+let [p1,p2]=m.key.split("_vs_");
 
-if(!winner) return;
+if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
+if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
 
-completed++;
-let [p1,p2]=matchId.split("_vs_");
-
-if(winner===p1){data[p1].wins++;data[p2].loss++;}
-if(winner===p2){data[p2].wins++;data[p1].loss++;}
+let select=document.querySelector(`select[data-group="${group}"][data-match="${m.key}"]`);
+if(select) select.value=val.winner;
 });
 }
 
-let standings=Object.keys(data).map(p=>({
+let standings=players.map(p=>({
 name:p,
 wins:data[p].wins,
 loss:data[p].loss,
@@ -244,124 +228,131 @@ return b.fd-a.fd;
 let tbody=document.getElementById(group+"-body");
 tbody.innerHTML="";
 
-standings.forEach(s=>{
+standings.forEach(p=>{
 tbody.innerHTML+=`
 <tr>
-<td>${s.name}</td>
-<td>${s.wins+s.loss}</td>
-<td>${s.wins}</td>
-<td>${s.loss}</td>
-<td class="points">${s.points}</td>
-<td class="fd">${s.fd}</td>
+<td>${p.name}</td>
+<td>${p.wins+p.loss}</td>
+<td>${p.wins}</td>
+<td>${p.loss}</td>
+<td>${p.points}</td>
+<td>${p.fd}</td>
 </tr>`;
 });
 
-/* PROMOTION */
-if(completed===10){
-let top2=standings.slice(0,2).map(x=>x.name);
-
-if(group==="Group A"){superAC[0]=top2[0];superAC[1]=top2[1];}
-if(group==="Group C"){superAC[2]=top2[0];superAC[3]=top2[1];}
-if(group==="Group B"){superBD[0]=top2[0];superBD[1]=top2[1];}
-if(group==="Group D"){superBD[2]=top2[0];superBD[3]=top2[1];}
-}else{
-if(group==="Group A"||group==="Group C") superAC=[];
-if(group==="Group B"||group==="Group D") superBD=[];
-}
-
-buildSuper("Super AC",superAC,"superAC");
-buildSuper("Super BD",superBD,"superBD");
+checkSuperQualification();
 
 });
 }
 
-/* BUILD SUPER STAGE */
-function buildSuper(stage,players,containerId){
+document.addEventListener("change",e=>{
+if(!isAdmin) return;
+if(!e.target.dataset.group) return;
+
+update(ref(db,e.target.dataset.group+"/matches/"+e.target.dataset.match),{
+winner:e.target.value
+});
+});
+
+Object.keys(groups).forEach(g=>renderGroup(g,groups[g]));
+
+let superACPlayers=[];
+let superBDPlayers=[];
+
+function checkSuperQualification(){
+
+superACPlayers=[];
+superBDPlayers=[];
+
+["Group A","Group C"].forEach(g=>{
+collectTopTwo(g,superACPlayers);
+});
+
+["Group B","Group D"].forEach(g=>{
+collectTopTwo(g,superBDPlayers);
+});
+
+renderSuper("Super AC",superACPlayers,"superAC");
+renderSuper("Super BD",superBDPlayers,"superBD");
+}
+
+function collectTopTwo(group,arr){
+
+let tbody=document.getElementById(group+"-body");
+if(!tbody || tbody.children.length<5) return;
+
+let totalMatches=generateMatches(groups[group]).length;
+let completed=0;
+
+let selects=document.querySelectorAll(`select[data-group="${group}"]`);
+selects.forEach(s=>{
+if(s.value) completed++;
+});
+
+if(completed!==totalMatches) return;
+
+arr.push(tbody.children[0].children[0].innerText);
+arr.push(tbody.children[1].children[0].innerText);
+}
+
+function renderSuper(stage,players,containerId){
 
 if(players.length!==4){
 document.getElementById(containerId).innerHTML="";
 return;
 }
 
+let matches=generateMatches(players);
+
 let html=`<h2>${stage}</h2>
 <table>
 <thead>
 <tr>
-<th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th>
+<th>Player</th>
+<th>P</th>
+<th>W</th>
+<th>L</th>
+<th>Points</th>
+<th>FD</th>
 </tr>
 </thead>
-<tbody id="${stage}-body"></tbody></table>`;
+<tbody id="${stage}-body">`;
+
+players.forEach(p=>{
+html+=`
+<tr>
+<td>${p}</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>`;
+});
+
+html+=`</tbody></table>`;
 
 html+=`<div class="fixture-box"><table>
 <tr><th>Match</th><th>Status</th></tr>`;
 
-generateMatches(players).forEach(m=>{
+matches.forEach(m=>{
 let [p1,p2]=m.split("_vs_");
 html+=`
 <tr>
 <td>${p1} vs ${p2}</td>
 <td>
-<select data-super="${stage}" data-match="${m}">
-<option value="">Not Played</option>
-<option value="${p1}">${p1}</option>
-<option value="${p2}">${p2}</option>
+<select>
+<option>Not Played</option>
+<option>${p1}</option>
+<option>${p2}</option>
 </select>
 </td>
 </tr>`;
 });
 
 html+=`</table></div>`;
+
 document.getElementById(containerId).innerHTML=html;
-
-/* SUPER CALC */
-onValue(ref(db,"Super/"+stage+"/matches"),snap=>{
-let data={};
-players.forEach(p=>data[p]={wins:0,loss:0});
-
-if(snap.exists()){
-snap.forEach(m=>{
-let winner=m.val().winner||"";
-let select=document.querySelector(
-`select[data-super="${stage}"][data-match="${m.key}"]`
-);
-if(select) select.value=winner;
-
-if(!winner) return;
-
-let [p1,p2]=m.key.split("_vs_");
-if(winner===p1){data[p1].wins++;data[p2].loss++;}
-if(winner===p2){data[p2].wins++;data[p1].loss++;}
-});
-}
-
-let standings=Object.keys(data).map(p=>({
-name:p,
-wins:data[p].wins,
-loss:data[p].loss,
-points:data[p].wins*2,
-fd:data[p].wins-data[p].loss
-}));
-
-standings.sort((a,b)=>{
-if(b.points!==a.points) return b.points-a.points;
-return b.fd-a.fd;
-});
-
-let tbody=document.getElementById(stage+"-body");
-tbody.innerHTML="";
-
-standings.forEach(s=>{
-tbody.innerHTML+=`
-<tr>
-<td>${s.name}</td>
-<td>${s.wins+s.loss}</td>
-<td>${s.wins}</td>
-<td>${s.loss}</td>
-<td class="points">${s.points}</td>
-<td class="fd">${s.fd}</td>
-</tr>`;
-});
-});
 }
 
 </script>

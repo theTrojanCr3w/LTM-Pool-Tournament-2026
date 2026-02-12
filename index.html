@@ -226,14 +226,33 @@ let completed=0;
 if(snap.exists()){
 snap.forEach(m=>{
 let val=m.val();
-if(!val.winner) return;
-completed++;
-let [p1,p2]=m.key.split("_vs_");
-if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
-if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
-});
+let matchKey = m.key;
+let select = document.querySelector(
+`select[data-group="${group}"][data-match="${matchKey}"]`
+);
+
+// 🔥 restore dropdown value after refresh
+if(select){
+select.value = val.winner || "";
 }
 
+if(!val.winner) return;
+
+completed++;
+
+let [p1,p2]=matchKey.split("_vs_");
+
+if(val.winner===p1){
+data[p1].wins++;
+data[p2].loss++;
+}
+if(val.winner===p2){
+data[p2].wins++;
+data[p1].loss++;
+}
+
+});
+}
 let standings=players.map(p=>({
 name:p,
 wins:data[p].wins,
@@ -344,3 +363,4 @@ winner:e.target.value
 </script>
 </body>
 </html>
+

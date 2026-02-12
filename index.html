@@ -72,6 +72,7 @@ font-weight:bold;
 </div>
 
 <div id="groups"></div>
+<div id="secondRound"></div>
 
 </div>
 
@@ -97,9 +98,9 @@ const db = getDatabase(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
-const adminBadge = document.getElementById("adminBadge");
+const loginBtn=document.getElementById("loginBtn");
+const logoutBtn=document.getElementById("logoutBtn");
+const adminBadge=document.getElementById("adminBadge");
 
 let isAdmin=false;
 
@@ -139,9 +140,7 @@ matches.push([players[i],players[j]]);
 return matches;
 }
 
-for(let groupName in groups){
-
-let players=groups[groupName];
+function renderGroup(groupName,players,targetDiv){
 
 let html=`<h2>${groupName}</h2>
 <table>
@@ -160,31 +159,15 @@ html+=`<tr data-group="${groupName}" data-player="${p}">
 });
 
 html+=`</tbody></table>`;
-
-let matches=generateMatches(players);
-
-html+=`<div class="fixture-box"><table>
-<tr><th>Match</th><th>Status</th></tr>`;
-
-matches.forEach(m=>{
-let matchId=m[0]+"_vs_"+m[1];
-html+=`<tr>
-<td>${m[0]} vs ${m[1]}</td>
-<td>
-<select data-group="${groupName}" data-match="${matchId}">
-<option value="">Not Played</option>
-<option value="${m[0]}">${m[0]}</option>
-<option value="${m[1]}">${m[1]}</option>
-</select>
-</td>
-</tr>`;
-});
-
-html+=`</table></div>`;
-container.innerHTML+=html;
+targetDiv.innerHTML+=html;
 }
 
-function sortGroup(group){
+for(let g in groups){
+renderGroup(g,groups[g],container);
+}
+
+function calculateTop2(group){
+
 let rows=Array.from(
 document.querySelectorAll(`tr[data-group="${group}"]`)
 );
@@ -195,74 +178,40 @@ let pB=parseInt(b.querySelector(".points").innerText);
 return pB-pA;
 });
 
-let tbody=rows[0].closest("tbody");
-rows.forEach(r=>tbody.appendChild(r));
+return [rows[0].dataset.player,rows[1].dataset.player];
 }
 
-document.addEventListener("change",e=>{
-if(!isAdmin) return;
-if(!e.target.matches("select")) return;
+function checkSecondRound(){
 
-let group=e.target.dataset.group;
-let match=e.target.dataset.match;
-let winner=e.target.value;
+let allFinished=true;
 
-update(ref(db,group+"/matches/"+match),{
-winner:winner
-});
-});
-
-for(let group in groups){
-
-onValue(ref(db,group+"/matches"),snapshot=>{
-
-let playersData={};
-groups[group].forEach(p=>playersData[p]={wins:0,loss:0});
-
-if(snapshot.exists()){
-snapshot.forEach(matchSnap=>{
-
-let match=matchSnap.key;
-let data=matchSnap.val();
-
-let select=document.querySelector(
-`select[data-group="${group}"][data-match="${match}"]`
-);
-
-if(data.winner){
-select.value=data.winner;
-
-let [p1,p2]=match.split("_vs_");
-
-if(data.winner===p1){
-playersData[p1].wins++;
-playersData[p2].loss++;
-}else{
-playersData[p2].wins++;
-playersData[p1].loss++;
-}
-}else{
-select.value="";
+for(let g in groups){
+let rows=document.querySelectorAll(`tr[data-group="${g}"]`);
+rows.forEach(r=>{
+if(parseInt(r.querySelector(".played").innerText)<4){
+allFinished=false;
 }
 });
 }
 
-groups[group].forEach(p=>{
-let row=document.querySelector(
-`tr[data-group="${group}"][data-player="${p}"]`
-);
-let w=playersData[p].wins;
-let l=playersData[p].loss;
-row.querySelector(".wins").innerText=w;
-row.querySelector(".loss").innerText=l;
-row.querySelector(".played").innerText=w+l;
-row.querySelector(".points").innerText=w*2;
-});
+if(!allFinished) return;
 
-sortGroup(group);
+let topA=calculateTop2("Group A");
+let topB=calculateTop2("Group B");
+let topC=calculateTop2("Group C");
+let topD=calculateTop2("Group D");
 
-});
+let groupE=[...topA,...topB];
+let groupF=[...topC,...topD];
+
+let secondDiv=document.getElementById("secondRound");
+secondDiv.innerHTML="<h1>🔥 SECOND ROUND 🔥</h1>";
+
+renderGroup("Group E (A+B)",groupE,secondDiv);
+renderGroup("Group F (C+D)",groupF,secondDiv);
 }
+
+setInterval(checkSecondRound,2000);
 
 </script>
 </body>

@@ -19,6 +19,7 @@ padding:40px 20px;
 }
 h1{text-align:center;color:#00ff99;}
 h2{margin-top:50px;}
+
 table{
 width:100%;
 border-collapse:collapse;
@@ -29,14 +30,17 @@ th{background:#006633;padding:10px;}
 td{padding:8px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);}
 tbody tr:nth-child(even){background:#0c462b;}
 .points{font-weight:bold;color:#00ff99;}
+
 .fixture-box{
-max-height:300px;
+max-height:280px;
 overflow-y:auto;
 background:#062d1c;
 padding:10px;
 border-radius:6px;
 }
+
 select{padding:4px;}
+
 button{
 padding:6px 12px;
 border:none;
@@ -44,6 +48,7 @@ border-radius:6px;
 cursor:pointer;
 font-weight:bold;
 }
+
 #loginBtn{background:#00ff99;}
 #logoutBtn{background:#ff4d4d;display:none;}
 .admin-badge{color:#00ff99;font-weight:bold;}
@@ -72,7 +77,7 @@ font-weight:bold;
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, update, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -85,7 +90,6 @@ const firebaseConfig = {
   appId: "1:1086941609764:web:051594093405f3ee83fdb1",
   measurementId: "G-PT3NL3RSG2"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
@@ -131,7 +135,58 @@ m.push(players[i]+"_vs_"+players[j]);
 return m;
 }
 
-function calculate(group,snapshot){
+/* AUTO INIT DB STRUCTURE */
+for(let group in groups){
+const matches=generateMatches(groups[group]);
+matches.forEach(match=>{
+set(ref(db,group+"/matches/"+match),{winner:""});
+});
+}
+
+/* BUILD GROUP UI */
+function buildGroups(){
+let html="";
+for(let group in groups){
+
+html+=`<h2>${group}</h2>
+<table>
+<thead>
+<tr><th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th></tr>
+</thead><tbody id="${group}-body"></tbody></table>`;
+
+html+=`<div class="fixture-box"><table>
+<tr><th>Match</th><th>Status</th></tr>`;
+
+generateMatches(groups[group]).forEach(match=>{
+let [p1,p2]=match.split("_vs_");
+html+=`
+<tr>
+<td>${p1} vs ${p2}</td>
+<td>
+<select data-group="${group}" data-match="${match}">
+<option value="">Not Played</option>
+<option value="${p1}">${p1}</option>
+<option value="${p2}">${p2}</option>
+</select>
+</td>
+</tr>`;
+});
+
+html+=`</table></div>`;
+}
+document.getElementById("groups").innerHTML=html;
+}
+
+buildGroups();
+
+/* CALCULATE GROUP STANDINGS */
+let superACPlayers=[];
+let superBDPlayers=[];
+
+for(let group in groups){
+
+onValue(ref(db,group+"/matches"),snapshot=>{
+
 let data={};
 groups[group].forEach(p=>data[p]={wins:0,loss:0});
 let completed=0;
@@ -160,22 +215,24 @@ if(b.points!==a.points) return b.points-a.points;
 return b.fd-a.fd;
 });
 
-return {standings,completed};
-}
+let tbody=document.getElementById(group+"-body");
+tbody.innerHTML="";
 
-let superACPlayers=[];
-let superBDPlayers=[];
+standings.forEach(p=>{
+tbody.innerHTML+=`
+<tr>
+<td>${p.name}</td>
+<td>${p.wins+p.loss}</td>
+<td>${p.wins}</td>
+<td>${p.loss}</td>
+<td class="points">${p.points}</td>
+<td>${p.fd}</td>
+</tr>`;
+});
 
-for(let group in groups){
-
-onValue(ref(db,group+"/matches"),snapshot=>{
-
-let result=calculate(group,snapshot);
-let total=generateMatches(groups[group]).length;
-
-if(result.completed===total){
-
-let top2=result.standings.slice(0,2).map(p=>p.name);
+/* PROMOTION */
+if(completed===10){
+let top2=standings.slice(0,2).map(p=>p.name);
 
 if(group==="Group A"){superACPlayers[0]=top2[0];superACPlayers[1]=top2[1];}
 if(group==="Group C"){superACPlayers[2]=top2[0];superACPlayers[3]=top2[1];}
@@ -187,42 +244,65 @@ if(group==="Group A"||group==="Group C") superACPlayers=[];
 if(group==="Group B"||group==="Group D") superBDPlayers=[];
 }
 
-buildSuper("Super AC",superACPlayers,"superAC");
-buildSuper("Super BD",superBDPlayers,"superBD");
+buildSuperStage("Super AC",superACPlayers,"superAC");
+buildSuperStage("Super BD",superBDPlayers,"superBD");
 
 });
-
 }
 
-function buildSuper(stage,players,container){
+/* SUPER STAGE */
+function buildSuperStage(stage,players,container){
 
 if(players.length!==4){
 document.getElementById(container).innerHTML="";
+remove(ref(db,"Super/"+stage));
 return;
 }
 
 let html=`<h2>${stage}</h2>
 <table>
 <thead>
-<tr>
-<th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th>
-</tr>
-</thead><tbody>`;
+<tr><th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th></tr>
+</thead><tbody id="${stage}-body"></tbody></table>`;
 
-players.forEach(p=>{
-html+=`<tr data-stage="${stage}" data-player="${p}">
-<td>${p}</td>
-<td class="played">0</td>
-<td class="wins">0</td>
-<td class="loss">0</td>
-<td class="points">0</td>
-<td class="fd">0</td>
+html+=`<div class="fixture-box"><table>
+<tr><th>Match</th><th>Status</th></tr>`;
+
+generateMatches(players).forEach(match=>{
+let [p1,p2]=match.split("_vs_");
+html+=`
+<tr>
+<td>${p1} vs ${p2}</td>
+<td>
+<select data-stage="${stage}" data-match="${match}">
+<option value="">Not Played</option>
+<option value="${p1}">${p1}</option>
+<option value="${p2}">${p2}</option>
+</select>
+</td>
 </tr>`;
 });
 
-html+=`</tbody></table>`;
+html+=`</table></div>`;
 document.getElementById(container).innerHTML=html;
 }
+
+/* SAVE RESULTS */
+document.addEventListener("change",e=>{
+if(!isAdmin) return;
+
+if(e.target.dataset.group){
+update(ref(db,e.target.dataset.group+"/matches/"+e.target.dataset.match),{
+winner:e.target.value
+});
+}
+
+if(e.target.dataset.stage){
+update(ref(db,"Super/"+e.target.dataset.stage+"/matches/"+e.target.dataset.match),{
+winner:e.target.value
+});
+}
+});
 
 </script>
 </body>

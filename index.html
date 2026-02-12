@@ -11,30 +11,24 @@ font-family:'Segoe UI',sans-serif;
 background:radial-gradient(circle at center,#0f5132 0%,#063d23 60%,#021d10 100%);
 color:white;
 }
-
 .overlay{
 min-height:100vh;
 max-width:1200px;
 margin:0 auto;
 padding:40px 20px;
 }
-
 h1{text-align:center;color:#00ff99;}
 h2{margin-top:50px;}
-
 table{
 width:100%;
 border-collapse:collapse;
 margin:20px 0;
 background:#0b3d26;
 }
-
 th{background:#006633;padding:10px;}
 td{padding:8px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);}
 tbody tr:nth-child(even){background:#0c462b;}
-
 .points{font-weight:bold;color:#00ff99;}
-
 .fixture-box{
 max-height:300px;
 overflow-y:auto;
@@ -42,11 +36,7 @@ background:#062d1c;
 padding:10px;
 border-radius:6px;
 }
-
-select,input{
-padding:4px;
-}
-
+select{padding:4px;}
 button{
 padding:6px 12px;
 border:none;
@@ -54,7 +44,6 @@ border-radius:6px;
 cursor:pointer;
 font-weight:bold;
 }
-
 #loginBtn{background:#00ff99;}
 #logoutBtn{background:#ff4d4d;display:none;}
 .admin-badge{color:#00ff99;font-weight:bold;}
@@ -75,9 +64,8 @@ font-weight:bold;
 </div>
 
 <div id="groups"></div>
-
-<div id="superACSection"></div>
-<div id="superBDSection"></div>
+<div id="superAC"></div>
+<div id="superBD"></div>
 
 </div>
 
@@ -92,7 +80,7 @@ const firebaseConfig = {
   authDomain: "ltm-pool-tournament.firebaseapp.com",
   databaseURL: "https://ltm-pool-tournament-default-rtdb.firebaseio.com",
   projectId: "ltm-pool-tournament",
-  storageBucket: "ltm-pool-tournament.appspot.com",
+  storageBucket: "ltm-pool-tournament.firebasestorage.app",
   messagingSenderId: "1086941609764",
   appId: "1:1086941609764:web:051594093405f3ee83fdb1",
   measurementId: "G-PT3NL3RSG2"
@@ -134,13 +122,13 @@ const groups={
 };
 
 function generateMatches(players){
-let matches=[];
+let m=[];
 for(let i=0;i<players.length;i++){
 for(let j=i+1;j<players.length;j++){
-matches.push(players[i]+"_vs_"+players[j]);
+m.push(players[i]+"_vs_"+players[j]);
 }
 }
-return matches;
+return m;
 }
 
 function calculateStandings(group,snapshot){
@@ -163,25 +151,30 @@ let standings=Object.keys(data).map(p=>({
 name:p,
 wins:data[p].wins,
 loss:data[p].loss,
-points:data[p].wins*2
+points:data[p].wins*2,
+fd:data[p].wins - data[p].loss
 }));
 
-standings.sort((a,b)=>b.points-a.points);
+standings.sort((a,b)=>{
+if(b.points!==a.points) return b.points-a.points;
+return b.fd-a.fd;
+});
+
 return {standings,completed};
 }
 
-/* PROMOTION + SUPER STAGE BUILD */
 let superACPlayers=[];
 let superBDPlayers=[];
 
-function buildSuperStage(name, players, containerId){
+function buildSuperStage(stage,players,container){
 
 if(players.length!==4){
-document.getElementById(containerId).innerHTML="";
+document.getElementById(container).innerHTML="";
+remove(ref(db,"Super/"+stage));
 return;
 }
 
-let html=`<h2>${name}</h2>
+let html=`<h2>${stage}</h2>
 <table>
 <thead>
 <tr>
@@ -197,13 +190,13 @@ let html=`<h2>${name}</h2>
 
 players.forEach(p=>{
 html+=`
-<tr data-super="${name}" data-player="${p}">
+<tr data-stage="${stage}" data-player="${p}">
 <td>${p}</td>
 <td class="played">0</td>
 <td class="wins">0</td>
 <td class="loss">0</td>
 <td class="points">0</td>
-<td><input type="number" data-fd="${name}_${p}" value="0"></td>
+<td class="fd">0</td>
 </tr>`;
 });
 
@@ -212,7 +205,7 @@ html+=`</tbody></table>`;
 let matches=generateMatches(players);
 
 html+=`<div class="fixture-box"><table>
-<tr><th>Match</th><th>Winner</th></tr>`;
+<tr><th>Match</th><th>Status</th></tr>`;
 
 matches.forEach(m=>{
 let [p1,p2]=m.split("_vs_");
@@ -220,7 +213,7 @@ html+=`
 <tr>
 <td>${p1} vs ${p2}</td>
 <td>
-<select data-super="${name}" data-match="${m}">
+<select data-stage="${stage}" data-match="${m}">
 <option value="">Not Played</option>
 <option value="${p1}">${p1}</option>
 <option value="${p2}">${p2}</option>
@@ -231,63 +224,46 @@ html+=`
 
 html+=`</table></div>`;
 
-document.getElementById(containerId).innerHTML=html;
+document.getElementById(container).innerHTML=html;
 }
-
-/* WATCH GROUP COMPLETION */
 
 for(let group in groups){
 
 onValue(ref(db,group+"/matches"),snapshot=>{
 
 let result=calculateStandings(group,snapshot);
-let standings=result.standings;
 let total=generateMatches(groups[group]).length;
 
 if(result.completed===total){
 
-let top2=standings.slice(0,2).map(p=>p.name);
+let top2=result.standings.slice(0,2).map(p=>p.name);
 
-if(group==="Group A") superACPlayers[0]=top2[0], superACPlayers[1]=top2[1];
-if(group==="Group C") superACPlayers[2]=top2[0], superACPlayers[3]=top2[1];
-
-if(group==="Group B") superBDPlayers[0]=top2[0], superBDPlayers[1]=top2[1];
-if(group==="Group D") superBDPlayers[2]=top2[0], superBDPlayers[3]=top2[1];
+if(group==="Group A"){superACPlayers[0]=top2[0];superACPlayers[1]=top2[1];}
+if(group==="Group C"){superACPlayers[2]=top2[0];superACPlayers[3]=top2[1];}
+if(group==="Group B"){superBDPlayers[0]=top2[0];superBDPlayers[1]=top2[1];}
+if(group==="Group D"){superBDPlayers[2]=top2[0];superBDPlayers[3]=top2[1];}
 
 }else{
-
 if(group==="Group A"||group==="Group C") superACPlayers=[];
 if(group==="Group B"||group==="Group D") superBDPlayers=[];
 }
 
-buildSuperStage("Super AC",superACPlayers,"superACSection");
-buildSuperStage("Super BD",superBDPlayers,"superBDSection");
+buildSuperStage("Super AC",superACPlayers,"superAC");
+buildSuperStage("Super BD",superBDPlayers,"superBD");
 
 });
 }
-
-/* SAVE SUPER MATCH RESULT */
 
 document.addEventListener("change",e=>{
-
 if(!isAdmin) return;
+if(!e.target.dataset.stage) return;
 
-if(e.target.dataset.super){
-
-let stage=e.target.dataset.super;
-let match=e.target.dataset.match;
-let winner=e.target.value;
-
-update(ref(db,"SuperStage/"+stage+"/matches/"+match),{
-winner:winner
+update(ref(db,"Super/"+e.target.dataset.stage+"/matches/"+e.target.dataset.match),{
+winner:e.target.value
 });
-}
-
 });
 
-/* CALCULATE SUPER STANDINGS */
-
-onValue(ref(db,"SuperStage"),snapshot=>{
+onValue(ref(db,"Super"),snapshot=>{
 
 if(!snapshot.exists()) return;
 
@@ -303,18 +279,18 @@ stageSnap.child("matches").forEach(m=>{
 let val=m.val();
 if(!val.winner) return;
 let [p1,p2]=m.key.split("_vs_");
-
 if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
 if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
 });
 
 players.forEach(p=>{
-let row=document.querySelector(`tr[data-super="${stage}"][data-player="${p}"]`);
+let row=document.querySelector(`tr[data-stage="${stage}"][data-player="${p}"]`);
 if(!row) return;
 row.querySelector(".wins").innerText=data[p].wins;
 row.querySelector(".loss").innerText=data[p].loss;
 row.querySelector(".played").innerText=data[p].wins+data[p].loss;
 row.querySelector(".points").innerText=data[p].wins*2;
+row.querySelector(".fd").innerText=data[p].wins-data[p].loss;
 });
 
 });

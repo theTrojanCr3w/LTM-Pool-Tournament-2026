@@ -7,124 +7,83 @@
 <style>
 body {
     margin:0;
-    font-family: 'Segoe UI', sans-serif;
-    background: radial-gradient(circle at center, #0f5132 0%, #063d23 60%, #021d10 100%);
+    font-family:'Segoe UI', sans-serif;
+    background: radial-gradient(circle at center,#0f5132 0%,#063d23 60%,#021d10 100%);
     color:white;
 }
 
 .overlay {
     min-height:100vh;
-    background: none;
-    overflow-x: auto; 
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 40px 20px;
-    
+    max-width:1200px;
+    margin:0 auto;
+    padding:40px 20px;
 }
-h2 {
-    max-width: 1200px;
-    margin: 40px auto 10px auto;
-    padding-left: 5px;
-}
-
-table {
-    width: 100%;
-    min-width: 600px;
-    max-width: 1200px; /* prevents squeezing */
-    border-collapse: collapse;
-    margin-top:20px;
-    margin-bottom:40px;
-    background: #0b3d26;
-    margin: 0 auto 40px auto;
-}
-tbody tr {
-    background: #0f5132;
-}
-
-tbody tr:nth-child(even) {
-    background: #0c462b;
-}
-
-@media (max-width: 768px) {
-    table {
-        font-size: 14px;
-    }
-
-    th, td {
-        padding: 6px;
-    }
-
-    input {
-        width: 45px;
-    }
-}
-td.points {
-    font-weight: bold;
-    font-size: 16px;
-    color: #00ff99;
-    text-shadow: 0 0 6px rgba(0,255,153,0.8);
-}
-
-tbody tr {
-    background: rgba(0, 0, 0, 0.35);
-}
-
-tbody tr:nth-child(even) {
-    background: rgba(0, 0, 0, 0.45);
-}
-
 
 h1 {
     text-align:center;
-    font-size:36px;
+    color:#00ff99;
+}
+
+h2 {
+    margin-top:40px;
+}
+
+table {
+    width:100%;
+    border-collapse:collapse;
     margin-bottom:30px;
-    color:#00ff99;
+    background:#0b3d26;
 }
 
-button {
-    padding:8px 14px;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
-    font-weight:bold;
-}
-
-#loginBtn { background:#00ff99; }
-#logoutBtn { background:#ff4d4d; display:none; }
-
-.admin-badge {
-    color:#00ff99;
-    font-weight:bold;
-    margin-left:10px;
-}
 th {
     background:#006633;
-    padding:12px;
+    padding:10px;
 }
 
 td {
-    padding:10px;
-    text-align:center;
-    border-bottom:1px solid rgba(255,255,255,0.1);
-}
-
-input {
-    width:60px;
-    padding:5px;
-    border-radius:5px;
-    border:none;
+    padding:8px;
     text-align:center;
 }
 
-input:disabled {
-    background:#ccc;
-    cursor:not-allowed;
+tbody tr:nth-child(even){
+    background:#0f5132;
 }
 
-.qualified {
-    background: rgba(0,255,153,0.25);
-    font-weight:bold;
+.points{
     color:#00ff99;
+    font-weight:bold;
+}
+
+input{
+    width:60px;
+}
+
+button{
+    padding:8px 14px;
+    background:#00ff99;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+#logoutBtn{
+    background:#ff4d4d;
+    display:none;
+}
+
+.fixtures{
+    max-height:250px;
+    overflow-y:auto;
+    background:#082c1a;
+    padding:10px;
+    border-radius:8px;
+    margin-bottom:40px;
+}
+
+.fixtures select{
+    background:#0f5132;
+    color:white;
+    padding:5px;
 }
 </style>
 </head>
@@ -132,10 +91,7 @@ input:disabled {
 <body>
 <div class="overlay">
 
-<h1>
-🎱 LTM POOL TOURNAMENT 2026🎱
-<span id="adminBadge" class="admin-badge"></span>
-</h1>
+<h1>🎱 LTM POOL TOURNAMENT 2026 🎱 <span id="adminBadge"></span></h1>
 
 <div style="text-align:center;margin-bottom:20px;">
 <button id="loginBtn">Admin Login</button>
@@ -171,157 +127,119 @@ const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const adminBadge = document.getElementById("adminBadge");
 
-let isAdmin = false;
-
+let isAdmin=false;
 const provider = new GoogleAuthProvider();
 
-loginBtn.onclick = async () => {
-    try {
-        await signInWithPopup(auth, provider);
-    } catch (err) {
-        alert("Login failed");
-    }
-};
+loginBtn.onclick=()=>signInWithPopup(auth,provider);
+logoutBtn.onclick=()=>signOut(auth);
 
-
-logoutBtn.onclick = () => signOut(auth);
-
-onAuthStateChanged(auth, user => {
-    if (user) {
-        isAdmin = true;
-        adminBadge.innerText = " (ADMIN)";
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "inline-block";
-        enableInputs(true);
-    } else {
-        isAdmin = false;
-        adminBadge.innerText = "";
-        loginBtn.style.display = "inline-block";
-        logoutBtn.style.display = "none";
-        enableInputs(false);
-    }
+onAuthStateChanged(auth,user=>{
+if(user){
+isAdmin=true;
+adminBadge.innerText="(ADMIN)";
+loginBtn.style.display="none";
+logoutBtn.style.display="inline-block";
+}else{
+isAdmin=false;
+adminBadge.innerText="";
+loginBtn.style.display="inline-block";
+logoutBtn.style.display="none";
+}
 });
 
-function enableInputs(state) {
-    document.querySelectorAll("input").forEach(i => {
-        i.disabled = !state;
-    });
-}
-
-const groups = {
-"Group A": ["Pratyush","Vamshi Krishna","Bhalchandra","Bhavik","Protim"],
-"Group B": ["Chirag","Karan","Tameem","Arif","Syam"],
-"Group C": ["Ganesh","Dinesh","Yash","Rachit","Ankit"],
-"Group D": ["Somyadeep","Shrey","Gaurav","Abdul","Vikas"]
+const groups={
+"Group A":["Pratyush","Vamshi Krishna","Bhalchandra","Bhavik","Protim"],
+"Group B":["Chirag","Karan","Tameem","Arif","Syam"],
+"Group C":["Ganesh","Dinesh","Yash","Rachit","Ankit"],
+"Group D":["Somyadeep","Shrey","Gaurav","Abdul","Vikas"]
 };
 
-const container = document.getElementById("groups");
+const fixtures={
+"Group A":[["Pratyush","Vamshi Krishna"],["Pratyush","Bhalchandra"],["Pratyush","Bhavik"],["Pratyush","Protim"],["Vamshi Krishna","Bhalchandra"],["Vamshi Krishna","Bhavik"],["Vamshi Krishna","Protim"],["Bhalchandra","Bhavik"],["Bhalchandra","Protim"],["Bhavik","Protim"]],
+"Group B":[["Chirag","Karan"],["Chirag","Tameem"],["Chirag","Arif"],["Chirag","Syam"],["Karan","Tameem"],["Karan","Arif"],["Karan","Syam"],["Tameem","Arif"],["Tameem","Syam"],["Arif","Syam"]],
+"Group C":[["Ganesh","Dinesh"],["Ganesh","Yash"],["Ganesh","Rachit"],["Ganesh","Ankit"],["Dinesh","Yash"],["Dinesh","Rachit"],["Dinesh","Ankit"],["Yash","Rachit"],["Yash","Ankit"],["Rachit","Ankit"]],
+"Group D":[["Somyadeep","Shrey"],["Somyadeep","Gaurav"],["Somyadeep","Abdul"],["Somyadeep","Vikas"],["Shrey","Gaurav"],["Shrey","Abdul"],["Shrey","Vikas"],["Gaurav","Abdul"],["Gaurav","Vikas"],["Abdul","Vikas"]]
+};
 
-for (let groupName in groups) {
+const container=document.getElementById("groups");
 
-let html = `<h2>${groupName}</h2>
+for(let group in groups){
+
+let html=`<h2>${group}</h2>
 <table>
-<thead>
-<tr>
-<th>Player</th>
-<th>P</th>
-<th>W</th>
-<th>L</th>
-<th>Points</th>
-</tr>
-</thead>
+<thead><tr><th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th></tr></thead>
 <tbody>`;
 
-groups[groupName].forEach(player => {
-html += `
-<tr data-player="${player}" data-group="${groupName}">
+groups[group].forEach(player=>{
+html+=`<tr data-group="${group}" data-player="${player}">
 <td>${player}</td>
 <td class="played">0</td>
-<td><input type="number" min="0" max="4" value="0" class="wins"></td>
-<td><input type="number" min="0" max="4" value="0" class="loss"></td>
+<td class="wins">0</td>
+<td class="loss">0</td>
 <td class="points">0</td>
 </tr>`;
 });
 
-html += `</tbody></table>`;
-container.innerHTML += html;
-}
+html+=`</tbody></table>
+<div class="fixtures">
+<table>
+<tr><th>Match</th><th>Winner</th></tr>`;
 
-function updateTable(table) {
-
-let rows = Array.from(table.querySelectorAll("tbody tr"));
-
-rows.forEach(row => {
-let w = parseInt(row.querySelector(".wins").value) || 0;
-let l = parseInt(row.querySelector(".loss").value) || 0;
-
-row.querySelector(".played").innerText = w + l;
-row.querySelector(".points").innerText = w * 2;
-row.classList.remove("qualified");
+fixtures[group].forEach(match=>{
+html+=`<tr>
+<td>${match[0]} vs ${match[1]}</td>
+<td>
+<select data-group="${group}" data-p1="${match[0]}" data-p2="${match[1]}">
+<option value="">Select</option>
+<option value="${match[0]}">${match[0]}</option>
+<option value="${match[1]}">${match[1]}</option>
+</select>
+</td>
+</tr>`;
 });
 
-rows.sort((a,b) =>
-parseInt(b.querySelector(".points").innerText) -
-parseInt(a.querySelector(".points").innerText)
-);
-
-rows.forEach(row => table.querySelector("tbody").appendChild(row));
-rows.slice(0,2).forEach(row => row.classList.add("qualified"));
+html+=`</table></div>`;
+container.innerHTML+=html;
 }
 
-document.addEventListener("input", function(e) {
+function updatePlayer(group,player,winInc,lossInc){
+let refPath=ref(db,group+"/"+player);
+onValue(refPath,snapshot=>{
+let data=snapshot.val()||{wins:0,loss:0};
+set(refPath,{
+wins:(data.wins||0)+winInc,
+loss:(data.loss||0)+lossInc
+});
+},{onlyOnce:true});
+}
 
-if (!isAdmin) return;
-
-if (e.target.classList.contains("wins") || e.target.classList.contains("loss")) {
-
-let row = e.target.closest("tr");
-let group = row.dataset.group;
-let player = row.dataset.player;
-
-let wins = parseInt(row.querySelector(".wins").value) || 0;
-let loss = parseInt(row.querySelector(".loss").value) || 0;
-
-set(ref(db, group + "/" + player), {
-wins: wins,
-loss: loss
+document.addEventListener("change",e=>{
+if(!isAdmin) return;
+if(e.target.tagName==="SELECT"){
+let group=e.target.dataset.group;
+let p1=e.target.dataset.p1;
+let p2=e.target.dataset.p2;
+let winner=e.target.value;
+if(!winner) return;
+let loser=winner===p1?p2:p1;
+updatePlayer(group,winner,1,0);
+updatePlayer(group,loser,0,1);
+}
 });
 
-updateTable(e.target.closest("table"));
-}
-});
-
-for (let group in groups) {
-for (let player of groups[group]) {
-
-onValue(ref(db, group + "/" + player), snapshot => {
-
-if (snapshot.exists()) {
-
-let data = snapshot.val();
-
-let row = document.querySelector(
-`tr[data-group="${group}"][data-player="${player}"]`
-);
-
-row.querySelector(".wins").value = data.wins || 0;
-row.querySelector(".loss").value = data.loss || 0;
-
-updateTable(row.closest("table"));
-}
+for(let group in groups){
+for(let player of groups[group]){
+onValue(ref(db,group+"/"+player),snapshot=>{
+let data=snapshot.val()||{wins:0,loss:0};
+let row=document.querySelector(`tr[data-group="${group}"][data-player="${player}"]`);
+row.querySelector(".wins").innerText=data.wins||0;
+row.querySelector(".loss").innerText=data.loss||0;
+row.querySelector(".played").innerText=(data.wins||0)+(data.loss||0);
+row.querySelector(".points").innerText=(data.wins||0)*2;
 });
 }
 }
 
 </script>
-
 </body>
 </html>
-
-
-
-
-
-
-
-

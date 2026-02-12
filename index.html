@@ -72,14 +72,14 @@ font-weight:bold;
 </div>
 
 <div id="groups"></div>
-<div id="secondRound"></div>
+<div id="superStage"></div>
 
 </div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, update, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -140,7 +140,7 @@ matches.push([players[i],players[j]]);
 return matches;
 }
 
-function renderGroup(groupName,players,targetDiv){
+function renderGroup(groupName,players){
 
 let html=`<h2>${groupName}</h2>
 <table>
@@ -159,14 +159,83 @@ html+=`<tr data-group="${groupName}" data-player="${p}">
 });
 
 html+=`</tbody></table>`;
-targetDiv.innerHTML+=html;
+
+let matches=generateMatches(players);
+
+html+=`<div class="fixture-box"><table>
+<tr><th>Match</th><th>Status</th></tr>`;
+
+matches.forEach(m=>{
+let matchId=m[0]+"_vs_"+m[1];
+html+=`<tr>
+<td>${m[0]} vs ${m[1]}</td>
+<td>
+<select data-group="${groupName}" data-match="${matchId}">
+<option value="">Not Played</option>
+<option value="${m[0]}">${m[0]}</option>
+<option value="${m[1]}">${m[1]}</option>
+</select>
+</td>
+</tr>`;
+});
+
+html+=`</table></div>`;
+container.innerHTML+=html;
 }
 
 for(let g in groups){
-renderGroup(g,groups[g],container);
+renderGroup(g,groups[g]);
 }
 
-function calculateTop2(group){
+document.addEventListener("change",e=>{
+if(!isAdmin) return;
+if(!e.target.matches("select")) return;
+
+let group=e.target.dataset.group;
+let match=e.target.dataset.match;
+let winner=e.target.value;
+
+update(ref(db,group+"/matches/"+match),{
+winner:winner
+});
+});
+
+function sortGroup(group){
+let rows=Array.from(
+document.querySelectorAll(`tr[data-group="${group}"]`)
+);
+
+rows.sort((a,b)=>{
+let pA=parseInt(a.querySelector(".points").innerText);
+let pB=parseInt(b.querySelector(".points").innerText);
+return pB-pA;
+});
+
+let tbody=rows[0].closest("tbody");
+rows.forEach(r=>tbody.appendChild(r));
+}
+
+function checkPromotion(group){
+
+get(ref(db,group+"/matches")).then(snapshot=>{
+
+if(!snapshot.exists()) return;
+
+let totalMatches=Object.keys(snapshot.val()).length;
+let completed=0;
+
+snapshot.forEach(m=>{
+if(m.val().winner) completed++;
+});
+
+if(completed===10){
+promoteTop2(group);
+}
+
+});
+}
+
+function promoteTop2(group){
 
 let rows=Array.from(
 document.querySelectorAll(`tr[data-group="${group}"]`)
@@ -178,40 +247,58 @@ let pB=parseInt(b.querySelector(".points").innerText);
 return pB-pA;
 });
 
-return [rows[0].dataset.player,rows[1].dataset.player];
+let top2=[rows[0].dataset.player,rows[1].dataset.player];
+
+if(group==="Group A" || group==="Group B"){
+set(ref(db,"SuperAB/"+group),top2);
+}else{
+set(ref(db,"SuperCD/"+group),top2);
 }
 
-function checkSecondRound(){
+renderSuperStage();
+}
 
-let allFinished=true;
+function renderSuperStage(){
+
+onValue(ref(db,"SuperAB"),snapshot=>{
+if(snapshot.exists()){
+let players=[];
+snapshot.forEach(g=>{
+g.val().forEach(p=>players.push(p));
+});
+renderSuperTable("Super Group AB",players);
+}
+});
+
+onValue(ref(db,"SuperCD"),snapshot=>{
+if(snapshot.exists()){
+let players=[];
+snapshot.forEach(g=>{
+g.val().forEach(p=>players.push(p));
+});
+renderSuperTable("Super Group CD",players);
+}
+});
+
+}
+
+function renderSuperTable(title,players){
+
+let div=document.getElementById("superStage");
+div.innerHTML+=`<h2>${title}</h2>
+<table>
+<tr><th>Qualified Players</th></tr>
+${players.map(p=>`<tr><td>${p}</td></tr>`).join("")}
+</table>`;
+}
 
 for(let g in groups){
-let rows=document.querySelectorAll(`tr[data-group="${g}"]`);
-rows.forEach(r=>{
-if(parseInt(r.querySelector(".played").innerText)<4){
-allFinished=false;
+onValue(ref(db,g+"/matches"),snapshot=>{
+if(snapshot.exists()){
+checkPromotion(g);
 }
 });
 }
-
-if(!allFinished) return;
-
-let topA=calculateTop2("Group A");
-let topB=calculateTop2("Group B");
-let topC=calculateTop2("Group C");
-let topD=calculateTop2("Group D");
-
-let groupE=[...topA,...topB];
-let groupF=[...topC,...topD];
-
-let secondDiv=document.getElementById("secondRound");
-secondDiv.innerHTML="<h1>🔥 SECOND ROUND 🔥</h1>";
-
-renderGroup("Group E (A+B)",groupE,secondDiv);
-renderGroup("Group F (C+D)",groupF,secondDiv);
-}
-
-setInterval(checkSecondRound,2000);
 
 </script>
 </body>

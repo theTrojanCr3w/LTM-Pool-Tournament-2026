@@ -20,7 +20,6 @@ padding:40px 20px;
 }
 
 h1{text-align:center;color:#00ff99;}
-
 h2{margin-top:40px;}
 
 table{
@@ -30,25 +29,11 @@ margin:20px 0;
 background:#0b3d26;
 }
 
-th{
-background:#006633;
-padding:10px;
-}
+th{background:#006633;padding:10px;}
+td{padding:8px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);}
+tbody tr:nth-child(even){background:#0c462b;}
 
-td{
-padding:8px;
-text-align:center;
-border-bottom:1px solid rgba(255,255,255,0.1);
-}
-
-tbody tr:nth-child(even){
-background:#0c462b;
-}
-
-.points{
-font-weight:bold;
-color:#00ff99;
-}
+.points{font-weight:bold;color:#00ff99;}
 
 .fixture-box{
 max-height:40vh;
@@ -69,8 +54,10 @@ font-weight:bold;
 #loginBtn{background:#00ff99;}
 #logoutBtn{background:#ff4d4d;display:none;}
 
-.admin-badge{
-color:#00ff99;
+.admin-badge{color:#00ff99;font-weight:bold;}
+
+.qualified{
+background:rgba(0,255,153,0.2);
 font-weight:bold;
 }
 </style>
@@ -201,6 +188,19 @@ html+=`</table></div>`;
 container.innerHTML+=html;
 }
 
+function sortTable(group){
+let tbody=document.querySelector(`table tbody`);
+let rows=Array.from(tbody.querySelectorAll("tr"));
+
+rows.sort((a,b)=>{
+let pA=parseInt(a.querySelector(".points").innerText);
+let pB=parseInt(b.querySelector(".points").innerText);
+return pB-pA;
+});
+
+rows.forEach(r=>tbody.appendChild(r));
+}
+
 document.addEventListener("change",e=>{
 if(!isAdmin) return;
 if(!e.target.matches("select")) return;
@@ -239,7 +239,7 @@ let [p1,p2]=match.split("_vs_");
 if(data.winner===p1){
 playersData[p1].wins++;
 playersData[p2].loss++;
-}else if(data.winner===p2){
+}else{
 playersData[p2].wins++;
 playersData[p1].loss++;
 }
@@ -260,6 +260,8 @@ row.querySelector(".loss").innerText=l;
 row.querySelector(".played").innerText=w+l;
 row.querySelector(".points").innerText=w*2;
 });
+
+sortTable(group); // 🔥 THIS SORTS TABLE
 
 });
 }

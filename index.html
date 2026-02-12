@@ -177,7 +177,7 @@ html+=`<tr>
 <td>${m[0]} vs ${m[1]}</td>
 <td>
 <select data-group="${groupName}" data-match="${matchId}">
-<option value="">Select</option>
+<option value="">Not Played</option>
 <option value="${m[0]}">${m[0]}</option>
 <option value="${m[1]}">${m[1]}</option>
 </select>
@@ -204,7 +204,7 @@ rows.forEach(r=>tbody.appendChild(r));
 
 document.addEventListener("change",e=>{
 if(!isAdmin) return;
-if(!e.target.matches("select")) return;
+if(!e.target.matches("Not Played")) return;
 
 let group=e.target.dataset.group;
 let match=e.target.dataset.match;
@@ -270,4 +270,5 @@ sortTable(group); // 🔥 THIS SORTS TABLE
 </script>
 </body>
 </html>
+
 

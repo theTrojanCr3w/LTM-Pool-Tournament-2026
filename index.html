@@ -55,11 +55,6 @@ font-weight:bold;
 #logoutBtn{background:#ff4d4d;display:none;}
 
 .admin-badge{color:#00ff99;font-weight:bold;}
-
-.qualified{
-background:rgba(0,255,153,0.2);
-font-weight:bold;
-}
 </style>
 </head>
 
@@ -169,7 +164,7 @@ html+=`</tbody></table>`;
 let matches=generateMatches(players);
 
 html+=`<div class="fixture-box"><table>
-<tr><th>Match</th><th>Winner</th></tr>`;
+<tr><th>Match</th><th>Status</th></tr>`;
 
 matches.forEach(m=>{
 let matchId=m[0]+"_vs_"+m[1];
@@ -189,9 +184,10 @@ html+=`</table></div>`;
 container.innerHTML+=html;
 }
 
-function sortTable(group){
-let tbody=document.querySelector(`table tbody`);
-let rows=Array.from(tbody.querySelectorAll("tr"));
+function sortGroup(group){
+let rows=Array.from(
+document.querySelectorAll(`tr[data-group="${group}"]`)
+);
 
 rows.sort((a,b)=>{
 let pA=parseInt(a.querySelector(".points").innerText);
@@ -199,12 +195,13 @@ let pB=parseInt(b.querySelector(".points").innerText);
 return pB-pA;
 });
 
+let tbody=rows[0].closest("tbody");
 rows.forEach(r=>tbody.appendChild(r));
 }
 
 document.addEventListener("change",e=>{
 if(!isAdmin) return;
-if(!e.target.matches("Not Played")) return;
+if(!e.target.matches("select")) return;
 
 let group=e.target.dataset.group;
 let match=e.target.dataset.match;
@@ -262,7 +259,7 @@ row.querySelector(".played").innerText=w+l;
 row.querySelector(".points").innerText=w*2;
 });
 
-sortTable(group); // 🔥 THIS SORTS TABLE
+sortGroup(group);
 
 });
 }
@@ -270,5 +267,3 @@ sortTable(group); // 🔥 THIS SORTS TABLE
 </script>
 </body>
 </html>
-
-

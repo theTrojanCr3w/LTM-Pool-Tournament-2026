@@ -5,83 +5,73 @@
 <title>LTM Pool Tournament 2026</title>
 
 <style>
-body {
-    margin:0;
-    font-family:'Segoe UI',sans-serif;
-    background: radial-gradient(circle at center, #0f5132 0%, #063d23 60%, #021d10 100%);
-    color:white;
+body{
+margin:0;
+font-family:'Segoe UI',sans-serif;
+background:radial-gradient(circle at center,#0f5132 0%,#063d23 60%,#021d10 100%);
+color:white;
 }
 
 .overlay{
-    min-height:100vh;
-    max-width:1200px;
-    margin:0 auto;
-    padding:40px 20px;
+min-height:100vh;
+max-width:1200px;
+margin:0 auto;
+padding:40px 20px;
 }
 
-h1{
-    text-align:center;
-    font-size:32px;
-    color:#00ff99;
-}
+h1{text-align:center;color:#00ff99;}
 
-h2{
-    margin-top:40px;
-}
+h2{margin-top:40px;}
 
 table{
-    width:100%;
-    border-collapse:collapse;
-    margin:20px 0;
-    background:#0b3d26;
+width:100%;
+border-collapse:collapse;
+margin:20px 0;
+background:#0b3d26;
 }
 
 th{
-    background:#006633;
-    padding:10px;
+background:#006633;
+padding:10px;
 }
 
 td{
-    padding:8px;
-    text-align:center;
-    border-bottom:1px solid rgba(255,255,255,0.1);
+padding:8px;
+text-align:center;
+border-bottom:1px solid rgba(255,255,255,0.1);
 }
 
 tbody tr:nth-child(even){
-    background:#0c462b;
+background:#0c462b;
 }
 
 .points{
-    font-weight:bold;
-    color:#00ff99;
-}
-
-select{
-    padding:4px;
+font-weight:bold;
+color:#00ff99;
 }
 
 .fixture-box{
-    max-height:250px;
-    overflow-y:auto;
-    background:#062d1c;
-    padding:10px;
-    border-radius:6px;
+max-height:40vh;
+overflow-y:auto;
+background:#062d1c;
+padding:10px;
+border-radius:6px;
 }
 
 button{
-    padding:6px 12px;
-    border:none;
-    border-radius:6px;
-    font-weight:bold;
-    cursor:pointer;
+padding:6px 12px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+font-weight:bold;
 }
 
-#loginBtn{ background:#00ff99; }
-#logoutBtn{ background:#ff4d4d; display:none; }
+#loginBtn{background:#00ff99;}
+#logoutBtn{background:#ff4d4d;display:none;}
 
 .admin-badge{
-    color:#00ff99;
-    font-weight:bold;
+color:#00ff99;
+font-weight:bold;
 }
 </style>
 </head>
@@ -106,48 +96,45 @@ button{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD-3BzT-TYnkegIJOKmAd38yxrajr8jct8",
-  authDomain: "ltm-pool-tournament.firebaseapp.com",
-  databaseURL: "https://ltm-pool-tournament-default-rtdb.firebaseio.com",
-  projectId: "ltm-pool-tournament",
-  storageBucket: "ltm-pool-tournament.appspot.com",
-  messagingSenderId: "1086941609764",
-  appId: "1:1086941609764:web:051594093405f3ee83fdb1",
-  measurementId: "G-PT3NL3RSG2"
+apiKey: "YOUR_API_KEY",
+authDomain: "ltm-pool-tournament.firebaseapp.com",
+databaseURL: "https://ltm-pool-tournament-default-rtdb.firebaseio.com",
+projectId: "ltm-pool-tournament",
+storageBucket: "ltm-pool-tournament.appspot.com",
+messagingSenderId: "1086941609764",
+appId: "1:1086941609764:web:051594093405f3ee83fdb1"
 };
 
-    
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
-
 const provider = new GoogleAuthProvider();
 
 const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const adminBadge = document.getElementById("adminBadge");
 
-let isAdmin = false;
+let isAdmin=false;
 
-loginBtn.onclick = () => signInWithPopup(auth, provider);
-logoutBtn.onclick = () => signOut(auth);
+loginBtn.onclick=()=>signInWithPopup(auth,provider);
+logoutBtn.onclick=()=>signOut(auth);
 
-onAuthStateChanged(auth, user=>{
-    if(user){
-        isAdmin=true;
-        adminBadge.innerText=" (ADMIN)";
-        loginBtn.style.display="none";
-        logoutBtn.style.display="inline-block";
-    }else{
-        isAdmin=false;
-        adminBadge.innerText="";
-        loginBtn.style.display="inline-block";
-        logoutBtn.style.display="none";
-    }
+onAuthStateChanged(auth,user=>{
+if(user){
+isAdmin=true;
+adminBadge.innerText=" (ADMIN)";
+loginBtn.style.display="none";
+logoutBtn.style.display="inline-block";
+}else{
+isAdmin=false;
+adminBadge.innerText="";
+loginBtn.style.display="inline-block";
+logoutBtn.style.display="none";
+}
 });
 
 const groups={
@@ -176,13 +163,11 @@ let players=groups[groupName];
 let html=`<h2>${groupName}</h2>
 <table>
 <thead>
-<tr>
-<th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th>
-</tr>
+<tr><th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th></tr>
 </thead><tbody>`;
 
 players.forEach(p=>{
-html+=`<tr data-player="${p}" data-group="${groupName}">
+html+=`<tr data-group="${groupName}" data-player="${p}">
 <td>${p}</td>
 <td class="played">0</td>
 <td class="wins">0</td>
@@ -200,8 +185,7 @@ html+=`<div class="fixture-box"><table>
 
 matches.forEach(m=>{
 let matchId=m[0]+"_vs_"+m[1];
-html+=`
-<tr>
+html+=`<tr>
 <td>${m[0]} vs ${m[1]}</td>
 <td>
 <select data-group="${groupName}" data-match="${matchId}">
@@ -214,12 +198,10 @@ html+=`
 });
 
 html+=`</table></div>`;
-
 container.innerHTML+=html;
 }
 
-document.addEventListener("change",function(e){
-
+document.addEventListener("change",e=>{
 if(!isAdmin) return;
 if(!e.target.matches("select")) return;
 
@@ -227,12 +209,9 @@ let group=e.target.dataset.group;
 let match=e.target.dataset.match;
 let winner=e.target.value;
 
-let [p1,p2]=match.split("_vs_");
-
 update(ref(db,group+"/matches/"+match),{
 winner:winner
 });
-
 });
 
 for(let group in groups){
@@ -240,16 +219,20 @@ for(let group in groups){
 onValue(ref(db,group+"/matches"),snapshot=>{
 
 let playersData={};
-
-groups[group].forEach(p=>{
-playersData[p]={wins:0,loss:0};
-});
+groups[group].forEach(p=>playersData[p]={wins:0,loss:0});
 
 if(snapshot.exists()){
 snapshot.forEach(matchSnap=>{
+
 let match=matchSnap.key;
 let data=matchSnap.val();
-if(!data.winner) return;
+
+let select=document.querySelector(
+`select[data-group="${group}"][data-match="${match}"]`
+);
+
+if(data.winner){
+select.value=data.winner;
 
 let [p1,p2]=match.split("_vs_");
 
@@ -260,11 +243,16 @@ playersData[p2].loss++;
 playersData[p2].wins++;
 playersData[p1].loss++;
 }
+}else{
+select.value="";
+}
 });
 }
 
 groups[group].forEach(p=>{
-let row=document.querySelector(`tr[data-group="${group}"][data-player="${p}"]`);
+let row=document.querySelector(
+`tr[data-group="${group}"][data-player="${p}"]`
+);
 let w=playersData[p].wins;
 let l=playersData[p].loss;
 row.querySelector(".wins").innerText=w;
@@ -279,4 +267,3 @@ row.querySelector(".points").innerText=w*2;
 </script>
 </body>
 </html>
-

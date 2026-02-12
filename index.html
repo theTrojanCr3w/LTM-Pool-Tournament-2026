@@ -83,7 +83,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-/* 🔐 YOUR FIREBASE CONFIG (KEEP YOURS) */
 const firebaseConfig = {
   apiKey: "AIzaSyD-3BzT-TYnkegIJOKmAd38yxrajr8jct8",
   authDomain: "ltm-pool-tournament.firebaseapp.com",
@@ -94,15 +93,14 @@ const firebaseConfig = {
   appId: "1:1086941609764:web:051594093405f3ee83fdb1",
   measurementId: "G-PT3NL3RSG2"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
-const adminBadge = document.getElementById("adminBadge");
+const loginBtn=document.getElementById("loginBtn");
+const logoutBtn=document.getElementById("logoutBtn");
+const adminBadge=document.getElementById("adminBadge");
 
 let isAdmin=false;
 
@@ -123,7 +121,6 @@ logoutBtn.style.display="none";
 }
 });
 
-/* 🧠 GROUPS */
 const groups={
 "Group A":["Pratyush","Vamshi Krishna","Bhalchandra","Bhavik","Protim"],
 "Group B":["Chirag","Karan","Tameem","Arif","Syam"],
@@ -143,7 +140,6 @@ return matches;
 
 const container=document.getElementById("groups");
 
-/* 🎯 BUILD TABLES + FIXTURES */
 for(let groupName in groups){
 
 let players=groups[groupName];
@@ -189,7 +185,7 @@ html+=`</table></div>`;
 container.innerHTML+=html;
 }
 
-/* 🧮 CALCULATE STANDINGS */
+/* Standings */
 function calculateStandings(group,snapshot){
 let data={};
 groups[group].forEach(p=>data[p]={wins:0,loss:0});
@@ -218,31 +214,25 @@ standings.sort((a,b)=>b.points-a.points);
 return {standings,completed};
 }
 
-/* 🔄 SAVE WINNER */
+/* Save winner */
 document.addEventListener("change",e=>{
 if(!isAdmin) return;
 if(!e.target.matches("select")) return;
-
-let group=e.target.dataset.group;
-let match=e.target.dataset.match;
-let winner=e.target.value;
-
-update(ref(db,group+"/matches/"+match),{winner:winner});
+update(ref(db,e.target.dataset.group+"/matches/"+e.target.dataset.match),{
+winner:e.target.value
+});
 });
 
-/* 🏆 SUPER STAGE UI */
-function renderSuperStage(){
+/* Super UI */
 document.getElementById("superStage").innerHTML=`
 <div class="super-stage">
-<h2>Super Group AB</h2>
-<ul id="superAB"></ul>
-<h2>Super Group CD</h2>
-<ul id="superCD"></ul>
+<h2>Super AC</h2>
+<ul id="superAC"></ul>
+<h2>Super BD</h2>
+<ul id="superBD"></ul>
 </div>`;
-}
-renderSuperStage();
 
-/* 🔁 MAIN LISTENER */
+/* Main listener */
 for(let group in groups){
 
 onValue(ref(db,group+"/matches"),snapshot=>{
@@ -251,21 +241,18 @@ let result=calculateStandings(group,snapshot);
 let standings=result.standings;
 let completed=result.completed;
 
-/* 🔥 Restore dropdowns */
+/* Restore dropdown */
 if(snapshot.exists()){
 snapshot.forEach(matchSnap=>{
-let match=matchSnap.key;
-let val=matchSnap.val();
 let select=document.querySelector(
-`select[data-group="${group}"][data-match="${match}"]`
+`select[data-group="${group}"][data-match="${matchSnap.key}"]`
 );
-if(select) select.value=val.winner||"";
+if(select) select.value=matchSnap.val().winner||"";
 });
 }
 
-/* 🔄 Update Table */
+/* Update table */
 let tbody=document.querySelector(`table[data-group="${group}"] tbody`);
-
 standings.forEach(p=>{
 let row=document.querySelector(
 `tr[data-group="${group}"][data-player="${p.name}"]`
@@ -277,42 +264,39 @@ row.querySelector(".points").innerText=p.points;
 tbody.appendChild(row);
 });
 
-/* 🚀 Promote if complete */
+/* Promote logic */
 if(completed===10){
 let top2=standings.slice(0,2).map(p=>p.name);
 
-if(group==="Group A"||group==="Group B"){
-update(ref(db,"SuperAB/"+group),{0:top2[0],1:top2[1]});
+if(group==="Group A"||group==="Group C"){
+update(ref(db,"SuperAC/"+group),{0:top2[0],1:top2[1]});
 }
-if(group==="Group C"||group==="Group D"){
-update(ref(db,"SuperCD/"+group),{0:top2[0],1:top2[1]});
+
+if(group==="Group B"||group==="Group D"){
+update(ref(db,"SuperBD/"+group),{0:top2[0],1:top2[1]});
 }
 }
 
 });
 }
 
-/* 👀 Watch Super Groups */
-onValue(ref(db,"SuperAB"),snap=>{
-let list=document.getElementById("superAB");
+/* Watch super groups */
+onValue(ref(db,"SuperAC"),snap=>{
+let list=document.getElementById("superAC");
 list.innerHTML="";
 if(snap.exists()){
 snap.forEach(g=>{
-g.forEach(p=>{
-list.innerHTML+=`<li>${p.val()}</li>`;
-});
+g.forEach(p=>list.innerHTML+=`<li>${p.val()}</li>`);
 });
 }
 });
 
-onValue(ref(db,"SuperCD"),snap=>{
-let list=document.getElementById("superCD");
+onValue(ref(db,"SuperBD"),snap=>{
+let list=document.getElementById("superBD");
 list.innerHTML="";
 if(snap.exists()){
 snap.forEach(g=>{
-g.forEach(p=>{
-list.innerHTML+=`<li>${p.val()}</li>`;
-});
+g.forEach(p=>list.innerHTML+=`<li>${p.val()}</li>`);
 });
 }
 });

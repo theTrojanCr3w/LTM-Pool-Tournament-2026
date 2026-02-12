@@ -72,7 +72,7 @@ font-weight:bold;
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, update, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -80,7 +80,7 @@ const firebaseConfig = {
   authDomain: "ltm-pool-tournament.firebaseapp.com",
   databaseURL: "https://ltm-pool-tournament-default-rtdb.firebaseio.com",
   projectId: "ltm-pool-tournament",
-  storageBucket: "ltm-pool-tournament.firebasestorage.app",
+  storageBucket: "ltm-pool-tournament.appspot.com",
   messagingSenderId: "1086941609764",
   appId: "1:1086941609764:web:051594093405f3ee83fdb1",
   measurementId: "G-PT3NL3RSG2"
@@ -131,7 +131,7 @@ m.push(players[i]+"_vs_"+players[j]);
 return m;
 }
 
-function calculateStandings(group,snapshot){
+function calculate(group,snapshot){
 let data={};
 groups[group].forEach(p=>data[p]={wins:0,loss:0});
 let completed=0;
@@ -152,7 +152,7 @@ name:p,
 wins:data[p].wins,
 loss:data[p].loss,
 points:data[p].wins*2,
-fd:data[p].wins - data[p].loss
+fd:data[p].wins-data[p].loss
 }));
 
 standings.sort((a,b)=>{
@@ -166,72 +166,11 @@ return {standings,completed};
 let superACPlayers=[];
 let superBDPlayers=[];
 
-function buildSuperStage(stage,players,container){
-
-if(players.length!==4){
-document.getElementById(container).innerHTML="";
-remove(ref(db,"Super/"+stage));
-return;
-}
-
-let html=`<h2>${stage}</h2>
-<table>
-<thead>
-<tr>
-<th>Player</th>
-<th>P</th>
-<th>W</th>
-<th>L</th>
-<th>Points</th>
-<th>FD</th>
-</tr>
-</thead>
-<tbody>`;
-
-players.forEach(p=>{
-html+=`
-<tr data-stage="${stage}" data-player="${p}">
-<td>${p}</td>
-<td class="played">0</td>
-<td class="wins">0</td>
-<td class="loss">0</td>
-<td class="points">0</td>
-<td class="fd">0</td>
-</tr>`;
-});
-
-html+=`</tbody></table>`;
-
-let matches=generateMatches(players);
-
-html+=`<div class="fixture-box"><table>
-<tr><th>Match</th><th>Status</th></tr>`;
-
-matches.forEach(m=>{
-let [p1,p2]=m.split("_vs_");
-html+=`
-<tr>
-<td>${p1} vs ${p2}</td>
-<td>
-<select data-stage="${stage}" data-match="${m}">
-<option value="">Not Played</option>
-<option value="${p1}">${p1}</option>
-<option value="${p2}">${p2}</option>
-</select>
-</td>
-</tr>`;
-});
-
-html+=`</table></div>`;
-
-document.getElementById(container).innerHTML=html;
-}
-
 for(let group in groups){
 
 onValue(ref(db,group+"/matches"),snapshot=>{
 
-let result=calculateStandings(group,snapshot);
+let result=calculate(group,snapshot);
 let total=generateMatches(groups[group]).length;
 
 if(result.completed===total){
@@ -248,54 +187,42 @@ if(group==="Group A"||group==="Group C") superACPlayers=[];
 if(group==="Group B"||group==="Group D") superBDPlayers=[];
 }
 
-buildSuperStage("Super AC",superACPlayers,"superAC");
-buildSuperStage("Super BD",superBDPlayers,"superBD");
+buildSuper("Super AC",superACPlayers,"superAC");
+buildSuper("Super BD",superBDPlayers,"superBD");
 
 });
+
 }
 
-document.addEventListener("change",e=>{
-if(!isAdmin) return;
-if(!e.target.dataset.stage) return;
+function buildSuper(stage,players,container){
 
-update(ref(db,"Super/"+e.target.dataset.stage+"/matches/"+e.target.dataset.match),{
-winner:e.target.value
-});
-});
+if(players.length!==4){
+document.getElementById(container).innerHTML="";
+return;
+}
 
-onValue(ref(db,"Super"),snapshot=>{
-
-if(!snapshot.exists()) return;
-
-snapshot.forEach(stageSnap=>{
-
-let stage=stageSnap.key;
-let players=stage==="Super AC"?superACPlayers:superBDPlayers;
-
-let data={};
-players.forEach(p=>data[p]={wins:0,loss:0});
-
-stageSnap.child("matches").forEach(m=>{
-let val=m.val();
-if(!val.winner) return;
-let [p1,p2]=m.key.split("_vs_");
-if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
-if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
-});
+let html=`<h2>${stage}</h2>
+<table>
+<thead>
+<tr>
+<th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th>
+</tr>
+</thead><tbody>`;
 
 players.forEach(p=>{
-let row=document.querySelector(`tr[data-stage="${stage}"][data-player="${p}"]`);
-if(!row) return;
-row.querySelector(".wins").innerText=data[p].wins;
-row.querySelector(".loss").innerText=data[p].loss;
-row.querySelector(".played").innerText=data[p].wins+data[p].loss;
-row.querySelector(".points").innerText=data[p].wins*2;
-row.querySelector(".fd").innerText=data[p].wins-data[p].loss;
+html+=`<tr data-stage="${stage}" data-player="${p}">
+<td>${p}</td>
+<td class="played">0</td>
+<td class="wins">0</td>
+<td class="loss">0</td>
+<td class="points">0</td>
+<td class="fd">0</td>
+</tr>`;
 });
 
-});
-
-});
+html+=`</tbody></table>`;
+document.getElementById(container).innerHTML=html;
+}
 
 </script>
 </body>

@@ -237,6 +237,8 @@ if(b.points!==a.points) return b.points-a.points;
 return b.fd-a.fd;
 });
 
+let tbody = document.querySelector(`tr[data-group="${group}"]`).closest("tbody");
+
 standings.forEach(s=>{
 let row=document.querySelector(
 `tr[data-group="${group}"][data-player="${s.name}"]`
@@ -248,7 +250,11 @@ row.querySelector(".loss").innerText=s.loss;
 row.querySelector(".played").innerText=s.wins+s.loss;
 row.querySelector(".points").innerText=s.points;
 row.querySelector(".fd").innerText=s.fd;
+
+/* THIS LINE MOVES ROW IN SORT ORDER */
+tbody.appendChild(row);
 });
+
 
 return {completed,total:generateMatches(groups[group]).length,standings};
 }
@@ -328,3 +334,4 @@ winner:e.target.value
 </script>
 </body>
 </html>
+

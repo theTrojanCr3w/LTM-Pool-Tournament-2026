@@ -73,12 +73,6 @@ box-shadow:0 0 15px silver;
 border-left:4px solid silver;
 }
 
-.third-place{
-background:rgba(205,127,50,0.12);
-box-shadow:0 0 12px #cd7f32;
-border-left:4px solid #cd7f32;
-}
-
 .fixture-box{
 max-height:320px;
 overflow-y:auto;
@@ -273,7 +267,6 @@ standings.forEach((p,i)=>{
 let glow="";
 if(i===0) glow="first-place";
 if(i===1) glow="second-place";
-if(i===2) glow="third-place";
 
 tbody.innerHTML+=`
 <tr class="${glow}">
@@ -363,4 +356,5 @@ winner:e.target.value
 </script>
 </body>
 </html>
+
 

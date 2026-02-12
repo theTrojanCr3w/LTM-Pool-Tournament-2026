@@ -11,39 +11,31 @@ font-family:'Segoe UI',sans-serif;
 background:radial-gradient(circle at center,#0f5132 0%,#063d23 60%,#021d10 100%);
 color:white;
 }
-
 .overlay{
 min-height:100vh;
 max-width:1200px;
 margin:0 auto;
 padding:40px 20px;
 }
-
 h1{text-align:center;color:#00ff99;}
 h2{margin-top:50px;}
-
 table{
 width:100%;
 border-collapse:collapse;
 margin:20px 0;
 background:#0b3d26;
-border-radius:10px;
-overflow:hidden;
 }
-
-th{
-background:#006633;
-padding:10px;
-}
-
-td{
-padding:8px;
-text-align:center;
-border-bottom:1px solid rgba(255,255,255,0.1);
-}
-
+th{background:#006633;padding:10px;}
+td{padding:8px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);}
 tbody tr:nth-child(even){background:#0c462b;}
-
+.points{font-weight:bold;color:#00ff99;}
+.fixture-box{
+max-height:300px;
+overflow-y:auto;
+background:#062d1c;
+padding:10px;
+border-radius:6px;
+}
 .top1{
 background:linear-gradient(90deg,#00ffcc,#00cc66);
 color:#000;
@@ -57,30 +49,32 @@ color:#000;
 font-weight:bold;
 box-shadow:0 0 8px #00ff99;
 }
-
-.fixture-box{
-max-height:250px;
-overflow-y:auto;
-background:#062d1c;
-padding:10px;
+select{padding:4px;}
+button{
+padding:6px 12px;
+border:none;
 border-radius:6px;
+cursor:pointer;
+font-weight:bold;
 }
-
-select{
-padding:4px;
-border-radius:4px;
-background:#012d18;
-color:white;
-border:1px solid #00ff99;
-}
-
+#loginBtn{background:#00ff99;}
+#logoutBtn{background:#ff4d4d;display:none;}
+.admin-badge{color:#00ff99;font-weight:bold;}
 </style>
 </head>
 
 <body>
 <div class="overlay">
 
-<h1>🎱 LTM POOL TOURNAMENT 2026 🎱</h1>
+<h1>
+🎱 LTM POOL TOURNAMENT 2026 🎱
+<span id="adminBadge" class="admin-badge"></span>
+</h1>
+
+<div style="text-align:center;margin-bottom:20px;">
+<button id="loginBtn">Admin Login</button>
+<button id="logoutBtn">Logout</button>
+</div>
 
 <div id="groups"></div>
 <div id="superAC"></div>
@@ -92,6 +86,7 @@ border:1px solid #00ff99;
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD-3BzT-TYnkegIJOKmAd38yxrajr8jct8",
@@ -106,16 +101,40 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-const groups = {
+const loginBtn=document.getElementById("loginBtn");
+const logoutBtn=document.getElementById("logoutBtn");
+const adminBadge=document.getElementById("adminBadge");
+
+let isAdmin=false;
+
+loginBtn.onclick=()=>signInWithPopup(auth,provider);
+logoutBtn.onclick=()=>signOut(auth);
+
+onAuthStateChanged(auth,user=>{
+if(user){
+isAdmin=true;
+adminBadge.innerText=" (ADMIN)";
+loginBtn.style.display="none";
+logoutBtn.style.display="inline-block";
+}else{
+isAdmin=false;
+adminBadge.innerText="";
+loginBtn.style.display="inline-block";
+logoutBtn.style.display="none";
+}
+});
+
+const groups={
 "Group A":["Pratyush","Vamshi Krishna","Bhalchandra","Bhavik","Protim"],
 "Group B":["Chirag","Karan","Tameem","Arif","Syam"],
 "Group C":["Ganesh","Dinesh","Yash","Rachit","Ankit"],
 "Group D":["Somyadeep","Shrey","Gaurav","Abdul","Vikas"]
 };
 
-let superACPlayers=[];
-let superBDPlayers=[];
+const container=document.getElementById("groups");
 
 function generateMatches(players){
 let m=[];
@@ -127,14 +146,11 @@ m.push(players[i]+"_vs_"+players[j]);
 return m;
 }
 
-function buildGroup(groupName){
+function renderGroup(group, players){
 
-let players = groups[groupName];
-let matches = generateMatches(players);
+let matches=generateMatches(players);
 
-let html = `
-<h2>${groupName}</h2>
-
+let html=`<h2>${group}</h2>
 <table>
 <thead>
 <tr>
@@ -146,171 +162,50 @@ let html = `
 <th>FD</th>
 </tr>
 </thead>
-<tbody id="${groupName}-body"></tbody>
-</table>
+<tbody id="${group}-body">`;
 
-<div class="fixture-box">
-<table>
-<tr><th>Match</th><th>Status</th></tr>
-`;
+players.forEach(p=>{
+html+=`
+<tr data-group="${group}" data-player="${p}">
+<td>${p}</td>
+<td class="played">0</td>
+<td class="wins">0</td>
+<td class="loss">0</td>
+<td class="points">0</td>
+<td class="fd">0</td>
+</tr>`;
+});
 
-matches.forEach(match=>{
-let [p1,p2]=match.split("_vs_");
+html+=`</tbody></table>`;
+
+html+=`<div class="fixture-box"><table>
+<tr><th>Match</th><th>Status</th></tr>`;
+
+matches.forEach(m=>{
+let [p1,p2]=m.split("_vs_");
 html+=`
 <tr>
 <td>${p1} vs ${p2}</td>
 <td>
-<select data-group="${groupName}" data-match="${match}">
+<select data-group="${group}" data-match="${m}">
 <option value="">Not Played</option>
 <option value="${p1}">${p1}</option>
 <option value="${p2}">${p2}</option>
 </select>
 </td>
-</tr>
-`;
+</tr>`;
 });
 
 html+=`</table></div>`;
 
-document.getElementById("groups").innerHTML+=html;
+container.innerHTML+=html;
 
-watchGroup(groupName);
+listenGroup(group, players);
 }
 
-function watchGroup(groupName){
+function listenGroup(group, players){
 
-onValue(ref(db,groupName+"/matches"),snapshot=>{
-
-let players=groups[groupName];
-let data={};
-players.forEach(p=>data[p]={wins:0,loss:0});
-
-if(snapshot.exists()){
-snapshot.forEach(m=>{
-let val=m.val();
-if(!val.winner) return;
-let [p1,p2]=m.key.split("_vs_");
-
-if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
-if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
-});
-}
-
-let standings = players.map(p=>({
-name:p,
-wins:data[p].wins,
-loss:data[p].loss,
-played:data[p].wins+data[p].loss,
-points:data[p].wins*2,
-fd:data[p].wins-data[p].loss
-}));
-
-standings.sort((a,b)=>{
-if(b.points!==a.points) return b.points-a.points;
-return b.fd-a.fd;
-});
-
-renderTable(groupName,standings);
-
-checkPromotion(groupName,standings,snapshot);
-
-});
-}
-
-function renderTable(groupName,standings){
-
-let body=document.getElementById(groupName+"-body");
-body.innerHTML="";
-
-standings.forEach((p,index)=>{
-
-let glow="";
-if(index===0) glow="top1";
-if(index===1) glow="top2";
-
-body.innerHTML+=`
-<tr class="${glow}">
-<td>${p.name}</td>
-<td>${p.played}</td>
-<td>${p.wins}</td>
-<td>${p.loss}</td>
-<td>${p.points}</td>
-<td>${p.fd}</td>
-</tr>
-`;
-});
-}
-
-function checkPromotion(groupName,standings,snapshot){
-
-let total=generateMatches(groups[groupName]).length;
-let completed=0;
-
-if(snapshot.exists()){
-snapshot.forEach(m=>{
-if(m.val().winner) completed++;
-});
-}
-
-if(completed!==total) return;
-
-let top2=standings.slice(0,2).map(p=>p.name);
-
-if(groupName==="Group A"){superACPlayers[0]=top2[0];superACPlayers[1]=top2[1];}
-if(groupName==="Group C"){superACPlayers[2]=top2[0];superACPlayers[3]=top2[1];}
-if(groupName==="Group B"){superBDPlayers[0]=top2[0];superBDPlayers[1]=top2[1];}
-if(groupName==="Group D"){superBDPlayers[2]=top2[0];superBDPlayers[3]=top2[1];}
-
-if(superACPlayers.length===4) buildSuper("Super AC",superACPlayers,"superAC");
-if(superBDPlayers.length===4) buildSuper("Super BD",superBDPlayers,"superBD");
-}
-
-function buildSuper(name,players,container){
-
-let matches=generateMatches(players);
-
-let html=`
-<h2>${name}</h2>
-<table>
-<thead>
-<tr>
-<th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th>
-</tr>
-</thead>
-<tbody id="${name}-body"></tbody>
-</table>
-
-<div class="fixture-box">
-<table>
-<tr><th>Match</th><th>Status</th></tr>
-`;
-
-matches.forEach(match=>{
-let [p1,p2]=match.split("_vs_");
-html+=`
-<tr>
-<td>${p1} vs ${p2}</td>
-<td>
-<select data-super="${name}" data-match="${match}">
-<option value="">Not Played</option>
-<option value="${p1}">${p1}</option>
-<option value="${p2}">${p2}</option>
-</select>
-</td>
-</tr>
-`;
-});
-
-html+=`</table></div>`;
-
-document.getElementById(container).innerHTML=html;
-
-watchSuper(name,players);
-}
-
-function watchSuper(name,players){
-
-onValue(ref(db,"Super/"+name+"/matches"),snapshot=>{
+onValue(ref(db,group+"/matches"),snapshot=>{
 
 let data={};
 players.forEach(p=>data[p]={wins:0,loss:0});
@@ -319,9 +214,14 @@ if(snapshot.exists()){
 snapshot.forEach(m=>{
 let val=m.val();
 if(!val.winner) return;
+
 let [p1,p2]=m.key.split("_vs_");
+
 if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
 if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
+
+let select=document.querySelector(`select[data-group="${group}"][data-match="${m.key}"]`);
+if(select) select.value=val.winner;
 });
 }
 
@@ -329,7 +229,6 @@ let standings=players.map(p=>({
 name:p,
 wins:data[p].wins,
 loss:data[p].loss,
-played:data[p].wins+data[p].loss,
 points:data[p].wins*2,
 fd:data[p].wins-data[p].loss
 }));
@@ -339,47 +238,139 @@ if(b.points!==a.points) return b.points-a.points;
 return b.fd-a.fd;
 });
 
-let body=document.getElementById(name+"-body");
-if(!body) return;
-body.innerHTML="";
+let tbody=document.getElementById(group+"-body");
+tbody.innerHTML="";
 
-standings.forEach((p,index)=>{
-let glow="";
-if(index===0) glow="top1";
-if(index===1) glow="top2";
-
-body.innerHTML+=`
-<tr class="${glow}">
+standings.forEach(p=>{
+tbody.innerHTML+=`
+<tr>
 <td>${p.name}</td>
-<td>${p.played}</td>
+<td>${p.wins+p.loss}</td>
 <td>${p.wins}</td>
 <td>${p.loss}</td>
 <td>${p.points}</td>
 <td>${p.fd}</td>
-</tr>
-`;
+</tr>`;
 });
+let glow="";
+if(index===0) glow="top1";
+if(index===1) glow="top2";
+checkSuperQualification();
+
 });
 }
 
 document.addEventListener("change",e=>{
+if(!isAdmin) return;
+if(!e.target.dataset.group) return;
 
-if(e.target.dataset.group){
 update(ref(db,e.target.dataset.group+"/matches/"+e.target.dataset.match),{
 winner:e.target.value
 });
-}
-
-if(e.target.dataset.super){
-update(ref(db,"Super/"+e.target.dataset.super+"/matches/"+e.target.dataset.match),{
-winner:e.target.value
-});
-}
-
 });
 
-for(let g in groups) buildGroup(g);
+Object.keys(groups).forEach(g=>renderGroup(g,groups[g]));
+
+let superACPlayers=[];
+let superBDPlayers=[];
+
+function checkSuperQualification(){
+
+superACPlayers=[];
+superBDPlayers=[];
+
+["Group A","Group C"].forEach(g=>{
+collectTopTwo(g,superACPlayers);
+});
+
+["Group B","Group D"].forEach(g=>{
+collectTopTwo(g,superBDPlayers);
+});
+
+renderSuper("Super AC",superACPlayers,"superAC");
+renderSuper("Super BD",superBDPlayers,"superBD");
+}
+
+function collectTopTwo(group,arr){
+
+let tbody=document.getElementById(group+"-body");
+if(!tbody || tbody.children.length<5) return;
+
+let totalMatches=generateMatches(groups[group]).length;
+let completed=0;
+
+let selects=document.querySelectorAll(`select[data-group="${group}"]`);
+selects.forEach(s=>{
+if(s.value) completed++;
+});
+
+if(completed!==totalMatches) return;
+
+arr.push(tbody.children[0].children[0].innerText);
+arr.push(tbody.children[1].children[0].innerText);
+}
+
+function renderSuper(stage,players,containerId){
+
+if(players.length!==4){
+document.getElementById(containerId).innerHTML="";
+return;
+}
+
+let matches=generateMatches(players);
+
+let html=`<h2>${stage}</h2>
+<table>
+<thead>
+<tr>
+<th>Player</th>
+<th>P</th>
+<th>W</th>
+<th>L</th>
+<th>Points</th>
+<th>FD</th>
+</tr>
+</thead>
+<tbody id="${stage}-body">`;
+
+players.forEach(p=>{
+html+=`
+<tr>
+<td>${p}</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+</tr>`;
+});
+
+html+=`</tbody></table>`;
+
+html+=`<div class="fixture-box"><table>
+<tr><th>Match</th><th>Status</th></tr>`;
+
+matches.forEach(m=>{
+let [p1,p2]=m.split("_vs_");
+html+=`
+<tr>
+<td>${p1} vs ${p2}</td>
+<td>
+<select>
+<option>Not Played</option>
+<option>${p1}</option>
+<option>${p2}</option>
+</select>
+</td>
+</tr>`;
+});
+
+html+=`</table></div>`;
+
+document.getElementById(containerId).innerHTML=html;
+}
 
 </script>
 </body>
 </html>
+

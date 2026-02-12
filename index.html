@@ -83,6 +83,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
+/* 🔐 YOUR FIREBASE CONFIG (KEEP YOURS) */
 const firebaseConfig = {
   apiKey: "AIzaSyD-3BzT-TYnkegIJOKmAd38yxrajr8jct8",
   authDomain: "ltm-pool-tournament.firebaseapp.com",
@@ -122,6 +123,7 @@ logoutBtn.style.display="none";
 }
 });
 
+/* 🧠 GROUPS */
 const groups={
 "Group A":["Pratyush","Vamshi Krishna","Bhalchandra","Bhavik","Protim"],
 "Group B":["Chirag","Karan","Tameem","Arif","Syam"],
@@ -141,6 +143,7 @@ return matches;
 
 const container=document.getElementById("groups");
 
+/* 🎯 BUILD TABLES + FIXTURES */
 for(let groupName in groups){
 
 let players=groups[groupName];
@@ -186,17 +189,7 @@ html+=`</table></div>`;
 container.innerHTML+=html;
 }
 
-document.addEventListener("change",e=>{
-if(!isAdmin) return;
-if(!e.target.matches("select")) return;
-
-let group=e.target.dataset.group;
-let match=e.target.dataset.match;
-let winner=e.target.value;
-
-update(ref(db,group+"/matches/"+match),{winner:winner});
-});
-
+/* 🧮 CALCULATE STANDINGS */
 function calculateStandings(group,snapshot){
 let data={};
 groups[group].forEach(p=>data[p]={wins:0,loss:0});
@@ -225,14 +218,31 @@ standings.sort((a,b)=>b.points-a.points);
 return {standings,completed};
 }
 
-function updateSuperStage(){
-let html=`<div class="super-stage"><h2>Super Group AB</h2><ul id="superAB"></ul>
-<h2>Super Group CD</h2><ul id="superCD"></ul></div>`;
-document.getElementById("superStage").innerHTML=html;
+/* 🔄 SAVE WINNER */
+document.addEventListener("change",e=>{
+if(!isAdmin) return;
+if(!e.target.matches("select")) return;
+
+let group=e.target.dataset.group;
+let match=e.target.dataset.match;
+let winner=e.target.value;
+
+update(ref(db,group+"/matches/"+match),{winner:winner});
+});
+
+/* 🏆 SUPER STAGE UI */
+function renderSuperStage(){
+document.getElementById("superStage").innerHTML=`
+<div class="super-stage">
+<h2>Super Group AB</h2>
+<ul id="superAB"></ul>
+<h2>Super Group CD</h2>
+<ul id="superCD"></ul>
+</div>`;
 }
+renderSuperStage();
 
-updateSuperStage();
-
+/* 🔁 MAIN LISTENER */
 for(let group in groups){
 
 onValue(ref(db,group+"/matches"),snapshot=>{
@@ -241,10 +251,25 @@ let result=calculateStandings(group,snapshot);
 let standings=result.standings;
 let completed=result.completed;
 
+/* 🔥 Restore dropdowns */
+if(snapshot.exists()){
+snapshot.forEach(matchSnap=>{
+let match=matchSnap.key;
+let val=matchSnap.val();
+let select=document.querySelector(
+`select[data-group="${group}"][data-match="${match}"]`
+);
+if(select) select.value=val.winner||"";
+});
+}
+
+/* 🔄 Update Table */
 let tbody=document.querySelector(`table[data-group="${group}"] tbody`);
 
 standings.forEach(p=>{
-let row=document.querySelector(`tr[data-group="${group}"][data-player="${p.name}"]`);
+let row=document.querySelector(
+`tr[data-group="${group}"][data-player="${p.name}"]`
+);
 row.querySelector(".wins").innerText=p.wins;
 row.querySelector(".loss").innerText=p.loss;
 row.querySelector(".played").innerText=p.wins+p.loss;
@@ -252,8 +277,10 @@ row.querySelector(".points").innerText=p.points;
 tbody.appendChild(row);
 });
 
+/* 🚀 Promote if complete */
 if(completed===10){
 let top2=standings.slice(0,2).map(p=>p.name);
+
 if(group==="Group A"||group==="Group B"){
 update(ref(db,"SuperAB/"+group),{0:top2[0],1:top2[1]});
 }
@@ -263,9 +290,9 @@ update(ref(db,"SuperCD/"+group),{0:top2[0],1:top2[1]});
 }
 
 });
-
 }
 
+/* 👀 Watch Super Groups */
 onValue(ref(db,"SuperAB"),snap=>{
 let list=document.getElementById("superAB");
 list.innerHTML="";

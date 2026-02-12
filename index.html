@@ -55,6 +55,7 @@ font-weight:bold;
 #logoutBtn{background:#ff4d4d;display:none;}
 
 .admin-badge{color:#00ff99;font-weight:bold;}
+.super-stage{margin-top:60px;background:#062d1c;padding:20px;border-radius:8px;}
 </style>
 </head>
 
@@ -102,26 +103,26 @@ const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const adminBadge = document.getElementById("adminBadge");
 
-let isAdmin = false;
+let isAdmin=false;
 
-loginBtn.onclick = () => signInWithPopup(auth, provider);
-logoutBtn.onclick = () => signOut(auth);
+loginBtn.onclick=()=>signInWithPopup(auth,provider);
+logoutBtn.onclick=()=>signOut(auth);
 
-onAuthStateChanged(auth, user => {
-    if (user) {
-        isAdmin = true;
-        adminBadge.innerText = " (ADMIN)";
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "inline-block";
-    } else {
-        isAdmin = false;
-        adminBadge.innerText = "";
-        loginBtn.style.display = "inline-block";
-        logoutBtn.style.display = "none";
-    }
+onAuthStateChanged(auth,user=>{
+if(user){
+isAdmin=true;
+adminBadge.innerText=" (ADMIN)";
+loginBtn.style.display="none";
+logoutBtn.style.display="inline-block";
+}else{
+isAdmin=false;
+adminBadge.innerText="";
+loginBtn.style.display="inline-block";
+logoutBtn.style.display="none";
+}
 });
 
-const groups = {
+const groups={
 "Group A":["Pratyush","Vamshi Krishna","Bhalchandra","Bhavik","Protim"],
 "Group B":["Chirag","Karan","Tameem","Arif","Syam"],
 "Group C":["Ganesh","Dinesh","Yash","Rachit","Ankit"],
@@ -138,105 +139,54 @@ matches.push(players[i]+"_vs_"+players[j]);
 return matches;
 }
 
-function calculateStandings(groupName, snapshot){
+const container=document.getElementById("groups");
 
-let playersData={};
-groups[groupName].forEach(p=>{
-playersData[p]={wins:0,loss:0};
+for(let groupName in groups){
+
+let players=groups[groupName];
+
+let html=`<h2>${groupName}</h2>
+<table data-group="${groupName}">
+<thead>
+<tr><th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th></tr>
+</thead><tbody>`;
+
+players.forEach(p=>{
+html+=`<tr data-group="${groupName}" data-player="${p}">
+<td>${p}</td>
+<td class="played">0</td>
+<td class="wins">0</td>
+<td class="loss">0</td>
+<td class="points">0</td>
+</tr>`;
 });
 
-let completedMatches=0;
+html+=`</tbody></table>`;
 
-if(snapshot.exists()){
-snapshot.forEach(matchSnap=>{
-let match=matchSnap.key;
-let data=matchSnap.val();
+let matches=generateMatches(players);
 
-if(!data.winner) return;
+html+=`<div class="fixture-box"><table>
+<tr><th>Match</th><th>Status</th></tr>`;
 
-completedMatches++;
-
+matches.forEach(match=>{
 let [p1,p2]=match.split("_vs_");
-
-if(data.winner===p1){
-playersData[p1].wins++;
-playersData[p2].loss++;
-}else if(data.winner===p2){
-playersData[p2].wins++;
-playersData[p1].loss++;
-}
-});
-}
-
-let standings = Object.keys(playersData).map(p=>({
-name:p,
-wins:playersData[p].wins,
-loss:playersData[p].loss,
-points:playersData[p].wins*2
-}));
-
-standings.sort((a,b)=>b.points-a.points);
-
-return {standings, completedMatches};
-}
-
-function promoteIfComplete(groupName, standings, completedMatches){
-
-if(completedMatches !== 10) return;
-
-let top2 = standings.slice(0,2).map(p=>p.name);
-
-if(groupName==="Group A" || groupName==="Group B"){
-update(ref(db,"SuperAB/"+groupName),{
-0:top2[0],
-1:top2[1]
-});
-}
-
-if(groupName==="Group C" || groupName==="Group D"){
-update(ref(db,"SuperCD/"+groupName),{
-0:top2[0],
-1:top2[1]
-});
-}
-
-}
-
-for(let group in groups){
-
-onValue(ref(db,group+"/matches"),snapshot=>{
-
-let result = calculateStandings(group, snapshot);
-let standings = result.standings;
-let completedMatches = result.completedMatches;
-
-groups[group].forEach(p=>{
-let row=document.querySelector(`tr[data-group="${group}"][data-player="${p}"]`);
-if(!row) return;
-
-let playerData = standings.find(s=>s.name===p);
-
-row.querySelector(".wins").innerText = playerData.wins;
-row.querySelector(".loss").innerText = playerData.loss;
-row.querySelector(".played").innerText = playerData.wins + playerData.loss;
-row.querySelector(".points").innerText = playerData.points;
+html+=`<tr>
+<td>${p1} vs ${p2}</td>
+<td>
+<select data-group="${groupName}" data-match="${match}">
+<option value="">Not Played</option>
+<option value="${p1}">${p1}</option>
+<option value="${p2}">${p2}</option>
+</select>
+</td>
+</tr>`;
 });
 
-let table = document.querySelector(`table[data-group="${group}"] tbody`);
-if(table){
-standings.forEach(p=>{
-let row=document.querySelector(`tr[data-group="${group}"][data-player="${p.name}"]`);
-table.appendChild(row);
-});
+html+=`</table></div>`;
+container.innerHTML+=html;
 }
 
-promoteIfComplete(group, standings, completedMatches);
-
-});
-}
-
-document.addEventListener("change",function(e){
-
+document.addEventListener("change",e=>{
 if(!isAdmin) return;
 if(!e.target.matches("select")) return;
 
@@ -244,14 +194,102 @@ let group=e.target.dataset.group;
 let match=e.target.dataset.match;
 let winner=e.target.value;
 
-update(ref(db,group+"/matches/"+match),{
-winner:winner
+update(ref(db,group+"/matches/"+match),{winner:winner});
 });
 
+function calculateStandings(group,snapshot){
+let data={};
+groups[group].forEach(p=>data[p]={wins:0,loss:0});
+let completed=0;
+
+if(snapshot.exists()){
+snapshot.forEach(matchSnap=>{
+let match=matchSnap.key;
+let val=matchSnap.val();
+if(!val.winner) return;
+completed++;
+let [p1,p2]=match.split("_vs_");
+if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
+if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
+});
+}
+
+let standings=Object.keys(data).map(p=>({
+name:p,
+wins:data[p].wins,
+loss:data[p].loss,
+points:data[p].wins*2
+}));
+
+standings.sort((a,b)=>b.points-a.points);
+return {standings,completed};
+}
+
+function updateSuperStage(){
+let html=`<div class="super-stage"><h2>Super Group AB</h2><ul id="superAB"></ul>
+<h2>Super Group CD</h2><ul id="superCD"></ul></div>`;
+document.getElementById("superStage").innerHTML=html;
+}
+
+updateSuperStage();
+
+for(let group in groups){
+
+onValue(ref(db,group+"/matches"),snapshot=>{
+
+let result=calculateStandings(group,snapshot);
+let standings=result.standings;
+let completed=result.completed;
+
+let tbody=document.querySelector(`table[data-group="${group}"] tbody`);
+
+standings.forEach(p=>{
+let row=document.querySelector(`tr[data-group="${group}"][data-player="${p.name}"]`);
+row.querySelector(".wins").innerText=p.wins;
+row.querySelector(".loss").innerText=p.loss;
+row.querySelector(".played").innerText=p.wins+p.loss;
+row.querySelector(".points").innerText=p.points;
+tbody.appendChild(row);
+});
+
+if(completed===10){
+let top2=standings.slice(0,2).map(p=>p.name);
+if(group==="Group A"||group==="Group B"){
+update(ref(db,"SuperAB/"+group),{0:top2[0],1:top2[1]});
+}
+if(group==="Group C"||group==="Group D"){
+update(ref(db,"SuperCD/"+group),{0:top2[0],1:top2[1]});
+}
+}
+
+});
+
+}
+
+onValue(ref(db,"SuperAB"),snap=>{
+let list=document.getElementById("superAB");
+list.innerHTML="";
+if(snap.exists()){
+snap.forEach(g=>{
+g.forEach(p=>{
+list.innerHTML+=`<li>${p.val()}</li>`;
+});
+});
+}
+});
+
+onValue(ref(db,"SuperCD"),snap=>{
+let list=document.getElementById("superCD");
+list.innerHTML="";
+if(snap.exists()){
+snap.forEach(g=>{
+g.forEach(p=>{
+list.innerHTML+=`<li>${p.val()}</li>`;
+});
+});
+}
 });
 
 </script>
-
 </body>
 </html>
-

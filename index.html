@@ -18,26 +18,38 @@ margin:0 auto;
 padding:40px 20px;
 }
 h1{text-align:center;color:#00ff99;}
-h2{margin-top:50px;color:#00ffcc;}
+h2{margin-top:50px;color:#00ff99;}
 table{
 width:100%;
 border-collapse:collapse;
 margin:20px 0;
 background:#0b3d26;
-border-radius:8px;
+border-radius:10px;
 overflow:hidden;
 }
-th{background:#006633;padding:10px;}
-td{padding:8px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);}
-tbody tr:nth-child(even){background:#0c462b;}
+th{
+background:#006633;
+padding:12px;
+}
+td{
+padding:10px;
+text-align:center;
+border-bottom:1px solid rgba(255,255,255,0.1);
+}
+tbody tr:nth-child(even){
+background:#0c462b;
+}
 .fixture-box{
-max-height:250px;
+max-height:280px;
 overflow-y:auto;
 background:#062d1c;
 padding:10px;
+border-radius:8px;
+}
+select{
+padding:4px;
 border-radius:6px;
 }
-select{padding:4px;border-radius:4px;}
 button{
 padding:6px 12px;
 border:none;
@@ -54,7 +66,8 @@ font-weight:bold;
 <body>
 <div class="overlay">
 
-<h1>🎱 LTM POOL TOURNAMENT 2026 🎱
+<h1>
+🎱 LTM POOL TOURNAMENT 2026 🎱
 <span id="adminBadge" class="admin-badge"></span>
 </h1>
 
@@ -141,7 +154,12 @@ let html=`<h2>${group}</h2>
 <table>
 <thead>
 <tr>
-<th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th>
+<th>Player</th>
+<th>P</th>
+<th>W</th>
+<th>L</th>
+<th>Points</th>
+<th>FD</th>
 </tr>
 </thead>
 <tbody id="${group}-body"></tbody>
@@ -157,7 +175,7 @@ html+=`
 <tr>
 <td>${p1} vs ${p2}</td>
 <td>
-<select data-path="${group}/matches/${m}">
+<select data-group="${group}" data-match="${m}">
 <option value="">Not Played</option>
 <option value="${p1}">${p1}</option>
 <option value="${p2}">${p2}</option>
@@ -170,10 +188,10 @@ html+=`</table></div>`;
 
 container.innerHTML+=html;
 
-listenGroup(group, players);
+listenGroup(group,players);
 }
 
-function listenGroup(group, players){
+function listenGroup(group,players){
 
 onValue(ref(db,group+"/matches"),snapshot=>{
 
@@ -190,8 +208,8 @@ let [p1,p2]=m.key.split("_vs_");
 if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
 if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
 
-let select=document.querySelector(`select[data-path="${group}/matches/${m.key}"]`);
-if(select) select.value=val.winner;
+let sel=document.querySelector(`select[data-group="${group}"][data-match="${m.key}"]`);
+if(sel) sel.value=val.winner;
 });
 }
 
@@ -224,49 +242,72 @@ tbody.innerHTML+=`
 });
 
 checkSuper();
-
 });
 }
 
 document.addEventListener("change",e=>{
 if(!isAdmin) return;
-if(!e.target.dataset.path) return;
+if(!e.target.dataset.group) return;
 
-update(ref(db,e.target.dataset.path),{
+update(ref(db,e.target.dataset.group+"/matches/"+e.target.dataset.match),{
 winner:e.target.value
 });
 });
 
 Object.keys(groups).forEach(g=>renderGroup(g,groups[g]));
 
-async function isGroupComplete(group){
-const snap=await get(ref(db,group+"/matches"));
-if(!snap.exists()) return false;
+async function getGroupStandings(group){
 
-let total=generateMatches(groups[group]).length;
+const snap = await get(ref(db, group + "/matches"));
+if(!snap.exists()) return null;
+
+let players=groups[group];
+let data={};
+players.forEach(p=>data[p]={wins:0,loss:0});
+
 let completed=0;
-
 snap.forEach(m=>{
-if(m.val().winner) completed++;
+let val=m.val();
+if(val.winner){
+completed++;
+let [p1,p2]=m.key.split("_vs_");
+if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
+if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
+}
 });
 
-return completed===total;
-}
+if(completed!==generateMatches(players).length) return null;
 
-function getTop2(group){
-let rows=[...document.querySelectorAll(`#${group}-body tr`)];
-return [rows[0]?.children[0].innerText,rows[1]?.children[0].innerText];
+let standings=players.map(p=>({
+name:p,
+wins:data[p].wins,
+loss:data[p].loss,
+points:data[p].wins*2,
+fd:data[p].wins-data[p].loss
+}));
+
+standings.sort((a,b)=>{
+if(b.points!==a.points) return b.points-a.points;
+return b.fd-a.fd;
+});
+
+return standings;
 }
 
 async function checkSuper(){
 
-let ac=[],bd=[];
+let ac=[];
+let bd=[];
 
-if(await isGroupComplete("Group A")) ac.push(...getTop2("Group A"));
-if(await isGroupComplete("Group C")) ac.push(...getTop2("Group C"));
+let a=await getGroupStandings("Group A");
+let c=await getGroupStandings("Group C");
+let b=await getGroupStandings("Group B");
+let d=await getGroupStandings("Group D");
 
-if(await isGroupComplete("Group B")) bd.push(...getTop2("Group B"));
-if(await isGroupComplete("Group D")) bd.push(...getTop2("Group D"));
+if(a) ac.push(a[0].name,a[1].name);
+if(c) ac.push(c[0].name,c[1].name);
+if(b) bd.push(b[0].name,b[1].name);
+if(d) bd.push(d[0].name,d[1].name);
 
 renderSuper("Super AC",ac,"superAC");
 renderSuper("Super BD",bd,"superBD");
@@ -274,10 +315,8 @@ renderSuper("Super BD",bd,"superBD");
 
 function renderSuper(stage,players,containerId){
 
-let box=document.getElementById(containerId);
-
 if(players.length!==4){
-box.innerHTML="";
+document.getElementById(containerId).innerHTML="";
 return;
 }
 
@@ -286,7 +325,14 @@ let matches=generateMatches(players);
 let html=`<h2>${stage}</h2>
 <table>
 <thead>
-<tr><th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th></tr>
+<tr>
+<th>Player</th>
+<th>P</th>
+<th>W</th>
+<th>L</th>
+<th>Points</th>
+<th>FD</th>
+</tr>
 </thead>
 <tbody id="${stage}-body"></tbody>
 </table>
@@ -301,7 +347,7 @@ html+=`
 <tr>
 <td>${p1} vs ${p2}</td>
 <td>
-<select data-path="Super/${stage}/matches/${m}">
+<select data-stage="${stage}" data-match="${m}">
 <option value="">Not Played</option>
 <option value="${p1}">${p1}</option>
 <option value="${p2}">${p2}</option>
@@ -312,7 +358,7 @@ html+=`
 
 html+=`</table></div>`;
 
-box.innerHTML=html;
+document.getElementById(containerId).innerHTML=html;
 
 listenSuper(stage,players);
 }
@@ -334,8 +380,8 @@ let [p1,p2]=m.key.split("_vs_");
 if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
 if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
 
-let select=document.querySelector(`select[data-path="Super/${stage}/matches/${m.key}"]`);
-if(select) select.value=val.winner;
+let sel=document.querySelector(`select[data-stage="${stage}"][data-match="${m.key}"]`);
+if(sel) sel.value=val.winner;
 });
 }
 
@@ -366,9 +412,17 @@ tbody.innerHTML+=`
 <td>${p.fd}</td>
 </tr>`;
 });
-
 });
 }
+
+document.addEventListener("change",e=>{
+if(!isAdmin) return;
+if(!e.target.dataset.stage) return;
+
+update(ref(db,"Super/"+e.target.dataset.stage+"/matches/"+e.target.dataset.match),{
+winner:e.target.value
+});
+});
 
 </script>
 </body>

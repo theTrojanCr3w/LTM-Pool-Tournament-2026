@@ -18,25 +18,26 @@ margin:0 auto;
 padding:40px 20px;
 }
 h1{text-align:center;color:#00ff99;}
-h2{margin-top:50px;}
+h2{margin-top:50px;color:#00ffcc;}
 table{
 width:100%;
 border-collapse:collapse;
 margin:20px 0;
 background:#0b3d26;
+border-radius:8px;
+overflow:hidden;
 }
 th{background:#006633;padding:10px;}
 td{padding:8px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);}
 tbody tr:nth-child(even){background:#0c462b;}
-.points{font-weight:bold;color:#00ff99;}
 .fixture-box{
-max-height:300px;
+max-height:250px;
 overflow-y:auto;
 background:#062d1c;
 padding:10px;
 border-radius:6px;
 }
-select{padding:4px;}
+select{padding:4px;border-radius:4px;}
 button{
 padding:6px 12px;
 border:none;
@@ -53,8 +54,7 @@ font-weight:bold;
 <body>
 <div class="overlay">
 
-<h1>
-🎱 LTM POOL TOURNAMENT 2026 🎱
+<h1>🎱 LTM POOL TOURNAMENT 2026 🎱
 <span id="adminBadge" class="admin-badge"></span>
 </h1>
 
@@ -68,12 +68,13 @@ font-weight:bold;
 <div id="superBD"></div>
 
 </div>
+
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, update, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-/* ================= FIREBASE ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyD-3BzT-TYnkegIJOKmAd38yxrajr8jct8",
   authDomain: "ltm-pool-tournament.firebaseapp.com",
@@ -90,217 +91,285 @@ const db = getDatabase(app);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-/* ================= AUTH ================= */
-let isAdmin = false;
-loginBtn.onclick = () => signInWithPopup(auth, provider);
-logoutBtn.onclick = () => signOut(auth);
+const loginBtn=document.getElementById("loginBtn");
+const logoutBtn=document.getElementById("logoutBtn");
+const adminBadge=document.getElementById("adminBadge");
 
-onAuthStateChanged(auth, user => {
-  isAdmin = !!user;
-  adminBadge.innerText = user ? " (ADMIN)" : "";
-  loginBtn.style.display = user ? "none" : "inline-block";
-  logoutBtn.style.display = user ? "inline-block" : "none";
+let isAdmin=false;
+
+loginBtn.onclick=()=>signInWithPopup(auth,provider);
+logoutBtn.onclick=()=>signOut(auth);
+
+onAuthStateChanged(auth,user=>{
+if(user){
+isAdmin=true;
+adminBadge.innerText=" (ADMIN)";
+loginBtn.style.display="none";
+logoutBtn.style.display="inline-block";
+}else{
+isAdmin=false;
+adminBadge.innerText="";
+loginBtn.style.display="inline-block";
+logoutBtn.style.display="none";
+}
 });
 
-/* ================= DATA ================= */
-const groups = {
-  "Group A": ["Pratyush","Vamshi Krishna","Bhalchandra","Bhavik","Protim"],
-  "Group B": ["Chirag","Karan","Tameem","Arif","Syam"],
-  "Group C": ["Ganesh","Dinesh","Yash","Rachit","Ankit"],
-  "Group D": ["Somyadeep","Shrey","Gaurav","Abdul","Vikas"]
+const groups={
+"Group A":["Pratyush","Vamshi Krishna","Bhalchandra","Bhavik","Protim"],
+"Group B":["Chirag","Karan","Tameem","Arif","Syam"],
+"Group C":["Ganesh","Dinesh","Yash","Rachit","Ankit"],
+"Group D":["Somyadeep","Shrey","Gaurav","Abdul","Vikas"]
 };
 
-const groupsDiv = document.getElementById("groups");
+const container=document.getElementById("groups");
 
-/* ================= HELPERS ================= */
 function generateMatches(players){
-  let m=[];
-  for(let i=0;i<players.length;i++)
-    for(let j=i+1;j<players.length;j++)
-      m.push(`${players[i]}_vs_${players[j]}`);
-  return m;
+let m=[];
+for(let i=0;i<players.length;i++){
+for(let j=i+1;j<players.length;j++){
+m.push(players[i]+"_vs_"+players[j]);
+}
+}
+return m;
 }
 
-/* ================= GROUP RENDER ================= */
-Object.keys(groups).forEach(group => renderGroup(group));
+function renderGroup(group, players){
 
-function renderGroup(group){
-  const players = groups[group];
-  const matches = generateMatches(players);
+let matches=generateMatches(players);
 
-  let html = `<h2>${group}</h2>
-  <table>
-  <thead><tr>
-  <th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th>
-  </tr></thead>
-  <tbody id="${group}-body"></tbody>
-  </table>
+let html=`<h2>${group}</h2>
+<table>
+<thead>
+<tr>
+<th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th>
+</tr>
+</thead>
+<tbody id="${group}-body"></tbody>
+</table>
 
-  <div class="fixture-box"><table>
-  <tr><th>Match</th><th>Status</th></tr>`;
+<div class="fixture-box">
+<table>
+<tr><th>Match</th><th>Status</th></tr>`;
 
-  matches.forEach(m=>{
-    let [a,b]=m.split("_vs_");
-    html+=`
-    <tr>
-      <td>${a} vs ${b}</td>
-      <td>
-        <select data-path="${group}/matches/${m}">
-          <option value="">Not Played</option>
-          <option value="${a}">${a}</option>
-          <option value="${b}">${b}</option>
-        </select>
-      </td>
-    </tr>`;
-  });
-
-  html+=`</table></div>`;
-  groupsDiv.innerHTML+=html;
-
-  listenGroup(group);
-}
-
-/* ================= GROUP LOGIC ================= */
-function listenGroup(group){
-  onValue(ref(db, group+"/matches"), snap=>{
-    const stats = {};
-    groups[group].forEach(p=>stats[p]={w:0,l:0});
-
-    if(snap.exists()){
-      snap.forEach(m=>{
-        const w=m.val().winner;
-        if(!w) return;
-        const [a,b]=m.key.split("_vs_");
-        if(w===a){stats[a].w++;stats[b].l++;}
-        if(w===b){stats[b].w++;stats[a].l++;}
-        const sel=document.querySelector(`select[data-path="${group}/matches/${m.key}"]`);
-        if(sel) sel.value=w;
-      });
-    }
-
-    const table=document.getElementById(group+"-body");
-    const sorted=[...groups[group]].sort((a,b)=>{
-      let pa=stats[a].w*2, pb=stats[b].w*2;
-      return pb-pa || (stats[b].w-stats[b].l)-(stats[a].w-stats[a].l);
-    });
-
-    table.innerHTML="";
-    sorted.forEach(p=>{
-      table.innerHTML+=`
-      <tr>
-        <td>${p}</td>
-        <td>${stats[p].w+stats[p].l}</td>
-        <td>${stats[p].w}</td>
-        <td>${stats[p].l}</td>
-        <td>${stats[p].w*2}</td>
-        <td>${stats[p].w-stats[p].l}</td>
-      </tr>`;
-    });
-
-    checkSuper();
-  });
-}
-
-/* ================= SUPER QUALIFICATION ================= */
-function checkSuper(){
-  const ac=[], bd=[];
-  if(isGroupComplete("Group A")) ac.push(...top2("Group A"));
-  if(isGroupComplete("Group C")) ac.push(...top2("Group C"));
-  if(isGroupComplete("Group B")) bd.push(...top2("Group B"));
-  if(isGroupComplete("Group D")) bd.push(...top2("Group D"));
-
-  renderSuper("Super AC", ac);
-  renderSuper("Super BD", bd);
-}
-
-function isGroupComplete(g){
-  return document.querySelectorAll(`select[data-path^="${g}/"]`)
-    .length ===
-    document.querySelectorAll(`select[data-path^="${g}/"][value]:not([value=""])`).length;
-}
-
-function top2(g){
-  return [...document.getElementById(g+"-body").children]
-    .slice(0,2)
-    .map(r=>r.children[0].innerText);
-}
-
-/* ================= SUPER RENDER + LOGIC ================= */
-function renderSuper(stage, players){
-  const box=document.getElementById(stage==="Super AC"?"superAC":"superBD");
-  if(players.length!==4){ box.innerHTML=""; return; }
-
-  let html=`<h2>${stage}</h2>
-  <table><thead><tr>
-  <th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th>
-  </tr></thead><tbody id="${stage}-body"></tbody></table>
-
-  <div class="fixture-box"><table>
-  <tr><th>Match</th><th>Status</th></tr>`;
-
-  generateMatches(players).forEach(m=>{
-    let [a,b]=m.split("_vs_");
-    html+=`
-    <tr>
-      <td>${a} vs ${b}</td>
-      <td>
-        <select data-path="Super/${stage}/matches/${m}">
-          <option value="">Not Played</option>
-          <option value="${a}">${a}</option>
-          <option value="${b}">${b}</option>
-        </select>
-      </td>
-    </tr>`;
-  });
-
-  html+=`</table></div>`;
-  box.innerHTML=html;
-
-  listenSuper(stage, players);
-}
-
-function listenSuper(stage, players){
-  onValue(ref(db,"Super/"+stage+"/matches"), snap=>{
-    const s={};
-    players.forEach(p=>s[p]={w:0,l:0});
-
-    if(snap.exists()){
-      snap.forEach(m=>{
-        const w=m.val().winner;
-        if(!w) return;
-        const [a,b]=m.key.split("_vs_");
-        if(w===a){s[a].w++;s[b].l++;}
-        if(w===b){s[b].w++;s[a].l++;}
-        const sel=document.querySelector(`select[data-path="Super/${stage}/matches/${m.key}"]`);
-        if(sel) sel.value=w;
-      });
-    }
-
-    const body=document.getElementById(stage+"-body");
-    body.innerHTML="";
-    players.sort((a,b)=>s[b].w*2-s[a].w*2).forEach(p=>{
-      body.innerHTML+=`
-      <tr>
-        <td>${p}</td>
-        <td>${s[p].w+s[p].l}</td>
-        <td>${s[p].w}</td>
-        <td>${s[p].l}</td>
-        <td>${s[p].w*2}</td>
-        <td>${s[p].w-s[p].l}</td>
-      </tr>`;
-    });
-  });
-}
-
-/* ================= SAVE WINNER ================= */
-document.addEventListener("change",e=>{
-  if(!isAdmin) return;
-  if(!e.target.dataset.path) return;
-  update(ref(db,e.target.dataset.path), { winner: e.target.value });
+matches.forEach(m=>{
+let [p1,p2]=m.split("_vs_");
+html+=`
+<tr>
+<td>${p1} vs ${p2}</td>
+<td>
+<select data-path="${group}/matches/${m}">
+<option value="">Not Played</option>
+<option value="${p1}">${p1}</option>
+<option value="${p2}">${p2}</option>
+</select>
+</td>
+</tr>`;
 });
+
+html+=`</table></div>`;
+
+container.innerHTML+=html;
+
+listenGroup(group, players);
+}
+
+function listenGroup(group, players){
+
+onValue(ref(db,group+"/matches"),snapshot=>{
+
+let data={};
+players.forEach(p=>data[p]={wins:0,loss:0});
+
+if(snapshot.exists()){
+snapshot.forEach(m=>{
+let val=m.val();
+if(!val.winner) return;
+
+let [p1,p2]=m.key.split("_vs_");
+
+if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
+if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
+
+let select=document.querySelector(`select[data-path="${group}/matches/${m.key}"]`);
+if(select) select.value=val.winner;
+});
+}
+
+let standings=players.map(p=>({
+name:p,
+wins:data[p].wins,
+loss:data[p].loss,
+points:data[p].wins*2,
+fd:data[p].wins-data[p].loss
+}));
+
+standings.sort((a,b)=>{
+if(b.points!==a.points) return b.points-a.points;
+return b.fd-a.fd;
+});
+
+let tbody=document.getElementById(group+"-body");
+tbody.innerHTML="";
+
+standings.forEach(p=>{
+tbody.innerHTML+=`
+<tr>
+<td>${p.name}</td>
+<td>${p.wins+p.loss}</td>
+<td>${p.wins}</td>
+<td>${p.loss}</td>
+<td>${p.points}</td>
+<td>${p.fd}</td>
+</tr>`;
+});
+
+checkSuper();
+
+});
+}
+
+document.addEventListener("change",e=>{
+if(!isAdmin) return;
+if(!e.target.dataset.path) return;
+
+update(ref(db,e.target.dataset.path),{
+winner:e.target.value
+});
+});
+
+Object.keys(groups).forEach(g=>renderGroup(g,groups[g]));
+
+async function isGroupComplete(group){
+const snap=await get(ref(db,group+"/matches"));
+if(!snap.exists()) return false;
+
+let total=generateMatches(groups[group]).length;
+let completed=0;
+
+snap.forEach(m=>{
+if(m.val().winner) completed++;
+});
+
+return completed===total;
+}
+
+function getTop2(group){
+let rows=[...document.querySelectorAll(`#${group}-body tr`)];
+return [rows[0]?.children[0].innerText,rows[1]?.children[0].innerText];
+}
+
+async function checkSuper(){
+
+let ac=[],bd=[];
+
+if(await isGroupComplete("Group A")) ac.push(...getTop2("Group A"));
+if(await isGroupComplete("Group C")) ac.push(...getTop2("Group C"));
+
+if(await isGroupComplete("Group B")) bd.push(...getTop2("Group B"));
+if(await isGroupComplete("Group D")) bd.push(...getTop2("Group D"));
+
+renderSuper("Super AC",ac,"superAC");
+renderSuper("Super BD",bd,"superBD");
+}
+
+function renderSuper(stage,players,containerId){
+
+let box=document.getElementById(containerId);
+
+if(players.length!==4){
+box.innerHTML="";
+return;
+}
+
+let matches=generateMatches(players);
+
+let html=`<h2>${stage}</h2>
+<table>
+<thead>
+<tr><th>Player</th><th>P</th><th>W</th><th>L</th><th>Points</th><th>FD</th></tr>
+</thead>
+<tbody id="${stage}-body"></tbody>
+</table>
+
+<div class="fixture-box">
+<table>
+<tr><th>Match</th><th>Status</th></tr>`;
+
+matches.forEach(m=>{
+let [p1,p2]=m.split("_vs_");
+html+=`
+<tr>
+<td>${p1} vs ${p2}</td>
+<td>
+<select data-path="Super/${stage}/matches/${m}">
+<option value="">Not Played</option>
+<option value="${p1}">${p1}</option>
+<option value="${p2}">${p2}</option>
+</select>
+</td>
+</tr>`;
+});
+
+html+=`</table></div>`;
+
+box.innerHTML=html;
+
+listenSuper(stage,players);
+}
+
+function listenSuper(stage,players){
+
+onValue(ref(db,"Super/"+stage+"/matches"),snapshot=>{
+
+let data={};
+players.forEach(p=>data[p]={wins:0,loss:0});
+
+if(snapshot.exists()){
+snapshot.forEach(m=>{
+let val=m.val();
+if(!val.winner) return;
+
+let [p1,p2]=m.key.split("_vs_");
+
+if(val.winner===p1){data[p1].wins++;data[p2].loss++;}
+if(val.winner===p2){data[p2].wins++;data[p1].loss++;}
+
+let select=document.querySelector(`select[data-path="Super/${stage}/matches/${m.key}"]`);
+if(select) select.value=val.winner;
+});
+}
+
+let standings=players.map(p=>({
+name:p,
+wins:data[p].wins,
+loss:data[p].loss,
+points:data[p].wins*2,
+fd:data[p].wins-data[p].loss
+}));
+
+standings.sort((a,b)=>{
+if(b.points!==a.points) return b.points-a.points;
+return b.fd-a.fd;
+});
+
+let tbody=document.getElementById(stage+"-body");
+tbody.innerHTML="";
+
+standings.forEach(p=>{
+tbody.innerHTML+=`
+<tr>
+<td>${p.name}</td>
+<td>${p.wins+p.loss}</td>
+<td>${p.wins}</td>
+<td>${p.loss}</td>
+<td>${p.points}</td>
+<td>${p.fd}</td>
+</tr>`;
+});
+
+});
+}
+
 </script>
-
-
 </body>
 </html>
-
